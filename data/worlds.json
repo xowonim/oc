@@ -26,7 +26,7 @@
       },
       {
         "key": "subcategory",
-        "label": "세부 분류",
+        "label": "소속",
         "type": "category",
         "galleryGroup": true
       },
