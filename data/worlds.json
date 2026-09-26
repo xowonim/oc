@@ -25,15 +25,15 @@
         "galleryGroup": false
       },
       {
+        "key": "age",
+        "label": "나이",
+        "type": "text"
+      },
+      {
         "key": "subcategory",
         "label": "세부 분류",
         "type": "category",
         "galleryGroup": true
-      },
-      {
-        "key": "age",
-        "label": "나이",
-        "type": "text"
       },
       {
         "key": "role",
