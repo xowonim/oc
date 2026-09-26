@@ -16,9 +16,10 @@
       "예르모 행성"
     ],
     "groupInGallery": true,
+    "hasHistory": true,
     "fields": [
-      { "key": "role", "label": "역할" },
-      { "key": "power", "label": "능력" }
+      { "key": "role", "label": "역할", "type": "text" },
+      { "key": "power", "label": "능력", "type": "tags" }
     ]
   },
   {
@@ -30,7 +31,7 @@
     "subcategories": ["요조라", "미조레", "시노노메"],
     "useGradeClass": true,
     "fields": [
-      { "key": "role", "label": "역할" }
+      { "key": "role", "label": "역할", "type": "text" }
     ]
   },
   {
@@ -41,8 +42,8 @@
     "color": "#ff8fab",
     "useGradeClass": true,
     "fields": [
-      { "key": "position", "label": "포지션" },
-      { "key": "color", "label": "담당 컬러" }
+      { "key": "position", "label": "포지션", "type": "text" },
+      { "key": "color", "label": "담당 컬러", "type": "text" }
     ]
   },
   {
@@ -57,7 +58,7 @@
       "리율", "티아"
     ],
     "fields": [
-      { "key": "role", "label": "역할" }
+      { "key": "role", "label": "역할", "type": "text" }
     ]
   }
 ]
