@@ -217,14 +217,14 @@
         "type": "textarea"
       },
       {
-        "key": "f_1790459190239",
-        "label": "성격",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790459237442",
         "label": "소속",
         "type": "tags"
+      },
+      {
+        "key": "f_1790459190239",
+        "label": "성격",
+        "type": "textarea"
       },
       {
         "key": "f_1790459196974",
