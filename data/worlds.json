@@ -23,17 +23,17 @@
         "type": "text"
       },
       {
+        "key": "subcategory",
+        "label": "세부 분류",
+        "type": "category",
+        "galleryGroup": true
+      },
+      {
         "key": "part",
         "label": "분류",
         "type": "category",
         "sidebarFilter": true,
         "galleryGroup": false
-      },
-      {
-        "key": "subcategory",
-        "label": "세부 분류",
-        "type": "category",
-        "galleryGroup": true
       },
       {
         "key": "role",
