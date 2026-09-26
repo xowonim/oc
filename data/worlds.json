@@ -197,7 +197,8 @@
       {
         "key": "f_1790459018143",
         "label": "학교",
-        "type": "category"
+        "type": "category",
+        "galleryGroup": true
       }
     ]
   }
