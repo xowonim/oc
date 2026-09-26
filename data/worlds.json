@@ -21,11 +21,12 @@
         "key": "part",
         "label": "분류",
         "type": "category",
-        "sidebarFilter": true
+        "sidebarFilter": true,
+        "galleryGroup": true
       },
       {
         "key": "subcategory",
-        "label": "세부 분류",
+        "label": "소속",
         "type": "category",
         "galleryGroup": true
       },
