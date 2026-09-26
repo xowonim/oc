@@ -175,5 +175,20 @@
         "type": "textarea"
       }
     ]
+  },
+  {
+    "id": "w_1790458917947",
+    "name": "OC",
+    "shortName": "OC",
+    "description": "",
+    "color": "#9a9a9a",
+    "fields": [
+      {
+        "key": "name",
+        "label": "이름",
+        "type": "text",
+        "core": true
+      }
+    ]
   }
 ]
