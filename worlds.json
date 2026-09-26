@@ -1,0 +1,53 @@
+[
+  {
+    "id": "ymkb",
+    "name": "유메키보",
+    "shortName": "유메키보",
+    "description": "아이돌/학원 세계관",
+    "color": "#ff8fab",
+    "fields": [
+      { "key": "position", "label": "포지션" },
+      { "key": "grade", "label": "학년/반" },
+      { "key": "color", "label": "담당 컬러" },
+      { "key": "hobby", "label": "취미" }
+    ]
+  },
+  {
+    "id": "fantasy",
+    "name": "판타지물",
+    "shortName": "판타지",
+    "description": "이세계/마법 세계관",
+    "color": "#8f9dff",
+    "fields": [
+      { "key": "race", "label": "종족" },
+      { "key": "role", "label": "직위/직업" },
+      { "key": "power", "label": "특수 능력" },
+      { "key": "weapon", "label": "무기/도구" }
+    ]
+  },
+  {
+    "id": "genre",
+    "name": "장르 기반 캐릭터",
+    "shortName": "장르물",
+    "description": "미스터리/액션 등 장르 중심 세계관",
+    "color": "#ffb26b",
+    "fields": [
+      { "key": "job", "label": "직업" },
+      { "key": "skill", "label": "특기" },
+      { "key": "background", "label": "배경 키워드" }
+    ]
+  },
+  {
+    "id": "daily",
+    "name": "일상물",
+    "shortName": "일상",
+    "description": "현실 기반 일상 세계관",
+    "color": "#7fd8be",
+    "fields": [
+      { "key": "school", "label": "학교/직장" },
+      { "key": "grade", "label": "학년/직급" },
+      { "key": "hobby", "label": "취미" },
+      { "key": "personality", "label": "성격" }
+    ]
+  }
+]

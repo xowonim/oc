@@ -1,0 +1,15 @@
+{
+  "id": "character-id",
+  "world": "ymkb",
+  "name": "캐릭터 이름",
+  "age": 0,
+  "affiliation": "소속",
+  "image": null,
+  "fields": {
+    "position": "-",
+    "grade": "-",
+    "color": "-",
+    "hobby": "-"
+  },
+  "bio": "캐릭터 소개"
+}
