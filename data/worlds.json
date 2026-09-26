@@ -13,15 +13,15 @@
         "core": true
       },
       {
+        "key": "f_1790457594679",
+        "label": "영어 및 한자 표기",
+        "type": "text"
+      },
+      {
         "key": "part",
         "label": "분류(부)",
         "type": "category",
         "sidebarFilter": true
-      },
-      {
-        "key": "f_1790457594679",
-        "label": "영어 및 한자 표기",
-        "type": "text"
       },
       {
         "key": "subcategory",
