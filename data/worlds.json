@@ -186,5 +186,20 @@
         "type": "textarea"
       }
     ]
+  },
+  {
+    "id": "w_1790459708806",
+    "name": "YMKB",
+    "shortName": "YMKB",
+    "description": "",
+    "color": "#9a9a9a",
+    "fields": [
+      {
+        "key": "name",
+        "label": "이름",
+        "type": "text",
+        "core": true
+      }
+    ]
   }
 ]
