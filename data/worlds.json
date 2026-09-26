@@ -18,17 +18,17 @@
         "type": "text"
       },
       {
+        "key": "subcategory",
+        "label": "소속",
+        "type": "category",
+        "galleryGroup": true
+      },
+      {
         "key": "part",
         "label": "분류(부)",
         "type": "category",
         "sidebarFilter": true,
         "multi": true
-      },
-      {
-        "key": "subcategory",
-        "label": "소속",
-        "type": "category",
-        "galleryGroup": true
       },
       {
         "key": "age",
