@@ -3,8 +3,9 @@
     "id": "sinsekai",
     "name": "神世界",
     "shortName": "神世界",
-    "description": "--",
+    "description": "신들의 세계관",
     "color": "#8f9dff",
+    "parts": ["1부", "2부", "3부", "4부", "5부"],
     "subcategories": [
       "오토리 일행",
       "음양오행의 신",
@@ -14,6 +15,7 @@
       "예레미야",
       "예르모 행성"
     ],
+    "groupInGallery": true,
     "fields": [
       { "key": "role", "label": "역할" },
       { "key": "power", "label": "능력" }
