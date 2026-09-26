@@ -45,7 +45,7 @@
   }
 
   async function loadWorlds() {
-    const res = await fetch('data/worlds.json');
+    const res = await fetch('data/worlds.json?t=' + Date.now());
     return res.json();
   }
 
@@ -460,29 +460,71 @@
 
   let currentFieldWidgets = {};
 
+  // ---- 부/세부 분류처럼 "목록" 형태인 항목의 추가·삭제 관리 ----
+  function renderManagedList(container, w, arrKey, labelText, selectId, currentValue) {
+    const wrap = document.createElement('div');
+    wrap.className = 'managed-list-field';
+
+    const selectLabel = document.createElement('label');
+    selectLabel.className = 'form-label';
+    selectLabel.innerHTML = `${labelText}
+      <select class="form-input" id="${selectId}">
+        ${(w[arrKey] || []).map((v) => `<option value="${escapeAttr(v)}" ${v === currentValue ? 'selected' : ''}>${v}</option>`).join('')}
+      </select>`;
+    wrap.appendChild(selectLabel);
+
+    const pillRow = document.createElement('div');
+    pillRow.className = 'managed-list-pills';
+    (w[arrKey] || []).forEach((v) => {
+      const pill = document.createElement('span');
+      pill.className = 'managed-list-pill';
+      pill.innerHTML = `${v} <button type="button" class="managed-list-pill-del">×</button>`;
+      pill.querySelector('button').addEventListener('click', () => removeListEntry(w, arrKey, v));
+      pillRow.appendChild(pill);
+    });
+    wrap.appendChild(pillRow);
+
+    const addWrap = document.createElement('div');
+    addWrap.className = 'managed-list-add';
+    addWrap.innerHTML = `<input type="text" class="form-input" placeholder="새 항목 추가">
+      <button type="button" class="managed-list-add-btn">+ 추가</button>`;
+    addWrap.querySelector('button').addEventListener('click', () => {
+      const input = addWrap.querySelector('input');
+      const v = input.value.trim();
+      if (!v) return;
+      addListEntry(w, arrKey, v);
+    });
+    wrap.appendChild(addWrap);
+
+    container.appendChild(wrap);
+  }
+
+  async function addListEntry(world, arrKey, value) {
+    world[arrKey] = world[arrKey] || [];
+    if (world[arrKey].includes(value)) return;
+    world[arrKey].push(value);
+    const ok = await saveWorlds();
+    if (ok) renderDynamicSection(world, null, null);
+  }
+
+  async function removeListEntry(world, arrKey, value) {
+    if (!window.confirm(`"${value}" 항목을 삭제할까요?`)) return;
+    world[arrKey] = (world[arrKey] || []).filter((v) => v !== value);
+    const ok = await saveWorlds();
+    if (ok) renderDynamicSection(world, null, null);
+  }
+
   function renderDynamicSection(w, existing, presetSubcategory) {
     const container = document.getElementById('dynamicFieldsContainer');
     container.innerHTML = '';
     currentFieldWidgets = {};
 
     if (w.parts) {
-      const wrapDiv = document.createElement('label');
-      wrapDiv.className = 'form-label';
-      wrapDiv.innerHTML = `분류(부)
-        <select class="form-input" id="fPart">
-          ${w.parts.map((p) => `<option value="${p}" ${((existing && existing.part) || presetSubcategory) === p ? 'selected' : ''}>${p}</option>`).join('')}
-        </select>`;
-      container.appendChild(wrapDiv);
+      renderManagedList(container, w, 'parts', '분류(부)', 'fPart', (existing && existing.part) || presetSubcategory);
     }
 
     if (w.subcategories) {
-      const wrapDiv = document.createElement('label');
-      wrapDiv.className = 'form-label';
-      wrapDiv.innerHTML = `세부 분류
-        <select class="form-input" id="fSubcategory">
-          ${w.subcategories.map((s) => `<option value="${s}" ${(existing ? existing.subcategory : presetSubcategory) === s ? 'selected' : ''}>${s}</option>`).join('')}
-        </select>`;
-      container.appendChild(wrapDiv);
+      renderManagedList(container, w, 'subcategories', '세부 분류', 'fSubcategory', existing ? existing.subcategory : presetSubcategory);
     }
 
     if (w.useGradeClass) {
@@ -668,6 +710,23 @@
     return newWorld;
   }
 
+  async function renameTemplate(world) {
+    const newName = window.prompt('템플릿 이름을 바꿔주세요.', world.name);
+    if (!newName || !newName.trim() || newName.trim() === world.name) return null;
+    const prevName = world.name;
+    const prevShort = world.shortName;
+    world.name = newName.trim();
+    world.shortName = newName.trim();
+    const ok = await saveWorlds();
+    if (!ok) {
+      world.name = prevName;
+      world.shortName = prevShort;
+      return null;
+    }
+    renderSidebar();
+    return world;
+  }
+
   async function removeTemplate(world) {
     if (worlds.length <= 1) {
       window.alert('템플릿이 하나뿐이라 삭제할 수 없어요.');
@@ -706,6 +765,7 @@
             ${worlds.map((wo) => `<option value="${wo.id}" ${wo.id === w.id ? 'selected' : ''}>${wo.name}</option>`).join('')}
           </select>
           <button type="button" class="template-mini-btn" id="templateAddBtn">+ 새 템플릿</button>
+          <button type="button" class="template-mini-btn" id="templateRenameBtn">이름 변경</button>
           <button type="button" class="template-mini-btn danger" id="templateDelBtn">템플릿 삭제</button>
         </div>
         <div class="image-slot-row">
@@ -775,6 +835,12 @@
       const current = worldById(selectedWorldId);
       const fallback = await removeTemplate(current);
       if (fallback) switchToWorld(fallback);
+    });
+
+    document.getElementById('templateRenameBtn').addEventListener('click', async () => {
+      const current = worldById(selectedWorldId);
+      const renamed = await renameTemplate(current);
+      if (renamed) switchToWorld(renamed);
     });
 
     document.getElementById('formFallbackLink').addEventListener('click', (e) => {
