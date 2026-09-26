@@ -9,9 +9,13 @@
   "grade": null,
   "class": null,
   "image": null,
+  "profileImage": null,
   "fields": {
     "role": "-",
-    "power": "-"
+    "power": []
   },
-  "bio": "캐릭터 소개"
+  "bio": "소개",
+  "personality": "성격",
+  "history": "작중행적",
+  "trivia": "여담"
 }
