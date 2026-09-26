@@ -206,15 +206,15 @@
         "type": "text"
       },
       {
+        "key": "f_1790459103728",
+        "label": "나이",
+        "type": "text"
+      },
+      {
         "key": "f_1790459041303",
         "label": "거주지",
         "type": "category",
         "sidebarFilter": true
-      },
-      {
-        "key": "f_1790459103728",
-        "label": "나이",
-        "type": "text"
       }
     ]
   }
