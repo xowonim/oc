@@ -68,53 +68,6 @@
     ]
   },
   {
-    "id": "oc",
-    "name": "OC",
-    "shortName": "OC",
-    "description": "지역 기반 오리지널 캐릭터",
-    "color": "#7fd8be",
-    "useGradeClass": true,
-    "fields": [
-      {
-        "key": "name",
-        "label": "이름",
-        "type": "text",
-        "core": true
-      },
-      {
-        "key": "subcategory",
-        "label": "지역",
-        "type": "category",
-        "sidebarFilter": true
-      },
-      {
-        "key": "age",
-        "label": "나이",
-        "type": "text"
-      },
-      {
-        "key": "role",
-        "label": "역할",
-        "type": "text"
-      },
-      {
-        "key": "bio",
-        "label": "소개",
-        "type": "textarea"
-      },
-      {
-        "key": "personality",
-        "label": "성격",
-        "type": "textarea"
-      },
-      {
-        "key": "trivia",
-        "label": "여담",
-        "type": "textarea"
-      }
-    ]
-  },
-  {
     "id": "ymkb",
     "name": "YMKB",
     "shortName": "YMKB",
