@@ -500,9 +500,27 @@
     const fieldMgr = document.createElement('div');
     fieldMgr.className = 'field-manager';
 
-    (w.fields || []).forEach((f) => {
+    (w.fields || []).forEach((f, idx, arr) => {
       const row = document.createElement('div');
       row.className = 'field-manager-row';
+
+      const moveWrap = document.createElement('div');
+      moveWrap.className = 'field-manager-move';
+      const upBtn = document.createElement('button');
+      upBtn.type = 'button';
+      upBtn.className = 'field-manager-move-btn';
+      upBtn.textContent = '▲';
+      upBtn.disabled = idx === 0;
+      upBtn.addEventListener('click', () => moveFieldInWorld(w, f.key, -1));
+      const downBtn = document.createElement('button');
+      downBtn.type = 'button';
+      downBtn.className = 'field-manager-move-btn';
+      downBtn.textContent = '▼';
+      downBtn.disabled = idx === arr.length - 1;
+      downBtn.addEventListener('click', () => moveFieldInWorld(w, f.key, 1));
+      moveWrap.appendChild(upBtn);
+      moveWrap.appendChild(downBtn);
+      row.appendChild(moveWrap);
 
       const label = document.createElement('label');
       label.className = 'form-label field-manager-label';
@@ -664,19 +682,62 @@
     }
   }
 
+  // 항목을 추가/삭제/순서변경 하면서 다시 그릴 때, 이미 폼에 입력해둔 값을 잃지 않도록
+  // 현재 화면에 있는 값을 먼저 스냅샷으로 떠 둔다.
+  function snapshotFormValues(world) {
+    const nameInput = document.querySelector('[data-field-key="name"]');
+    const snap = { name: nameInput ? nameInput.value : '', fields: {} };
+    if (world.useGradeClass) {
+      const g = document.getElementById('fGrade');
+      const c = document.getElementById('fClass');
+      snap.grade = g && g.value !== '' ? Number(g.value) : null;
+      snap.class = c ? c.value : null;
+    }
+    (world.fields || []).forEach((f) => {
+      if (f.key === 'name') return;
+      if (f.type === 'tags') {
+        snap.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
+      } else if (f.type === 'textarea') {
+        const ta = document.querySelector(`textarea[data-field-key="${f.key}"]`);
+        snap.fields[f.key] = ta ? ta.value : '';
+      } else {
+        const inp = document.querySelector(`[data-field-key="${f.key}"]`);
+        snap.fields[f.key] = inp ? inp.value : '';
+      }
+    });
+    return snap;
+  }
+
   async function addFieldToWorld(world, label, type) {
+    const snap = snapshotFormValues(world);
     const key = 'f_' + Date.now();
     world.fields = world.fields || [];
     world.fields.push({ key, label, type });
     const ok = await saveWorlds();
-    if (ok) renderDynamicSection(world, null, null);
+    if (ok) renderDynamicSection(world, snap, null);
   }
 
   async function removeFieldFromWorld(world, key) {
     if (!window.confirm('이 항목을 삭제할까요? (기존 캐릭터의 값은 남아있지만 화면에 더 이상 보이지 않아요)')) return;
+    const snap = snapshotFormValues(world);
     world.fields = (world.fields || []).filter((f) => f.key !== key);
     const ok = await saveWorlds();
-    if (ok) renderDynamicSection(world, null, null);
+    if (ok) renderDynamicSection(world, snap, null);
+  }
+
+  async function moveFieldInWorld(world, key, direction) {
+    const arr = world.fields || [];
+    const idx = arr.findIndex((f) => f.key === key);
+    const newIdx = idx + direction;
+    if (idx === -1 || newIdx < 0 || newIdx >= arr.length) return;
+    const snap = snapshotFormValues(world);
+    [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+    const ok = await saveWorlds();
+    if (ok) {
+      renderDynamicSection(world, snap, null);
+    } else {
+      [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]]; // 저장 실패 시 되돌림
+    }
   }
 
   async function renameFieldInWorld(world, key, newLabel) {
