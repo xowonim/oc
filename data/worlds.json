@@ -227,14 +227,14 @@
         "type": "textarea"
       },
       {
-        "key": "f_1790459196974",
-        "label": "여담",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790459275250",
         "label": "학급",
         "type": "text"
+      },
+      {
+        "key": "f_1790459196974",
+        "label": "여담",
+        "type": "textarea"
       }
     ]
   }
