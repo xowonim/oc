@@ -513,14 +513,37 @@
         ? (existing ? existing.name : '')
         : existing && existing.fields ? existing.fields[f.key] : null;
 
+      const labelEditRow = document.createElement('div');
+      labelEditRow.className = 'field-manager-label-edit-row';
+      const labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.className = 'field-manager-label-edit';
+      labelInput.value = f.label;
+      labelInput.addEventListener('change', () => {
+        const v = labelInput.value.trim();
+        if (v) renameFieldInWorld(w, f.key, v);
+        else labelInput.value = f.label;
+      });
+      labelEditRow.appendChild(labelInput);
       if (f.type === 'tags') {
-        label.innerHTML = `${f.label} <span class="field-type-tag">태그</span>`;
+        const tagBadge = document.createElement('span');
+        tagBadge.className = 'field-type-tag';
+        tagBadge.textContent = '태그';
+        labelEditRow.appendChild(tagBadge);
+      }
+      label.appendChild(labelEditRow);
+
+      if (f.type === 'tags') {
         const tagContainer = document.createElement('div');
         label.appendChild(tagContainer);
         currentFieldWidgets[f.key] = mountTagInput(tagContainer, rawVal);
       } else {
-        label.innerHTML = `${f.label}
-          <input type="text" class="form-input" data-field-key="${f.key}" value="${escapeAttr(rawVal || '')}">`;
+        const valInput = document.createElement('input');
+        valInput.type = 'text';
+        valInput.className = 'form-input';
+        valInput.setAttribute('data-field-key', f.key);
+        valInput.value = rawVal || '';
+        label.appendChild(valInput);
       }
       row.appendChild(label);
 
@@ -610,6 +633,66 @@
     if (ok) renderDynamicSection(world, null, null);
   }
 
+  async function renameFieldInWorld(world, key, newLabel) {
+    const f = (world.fields || []).find((f) => f.key === key);
+    if (!f || f.label === newLabel) return;
+    const prevLabel = f.label;
+    f.label = newLabel;
+    const ok = await saveWorlds();
+    if (!ok) f.label = prevLabel; // 저장 실패 시 되돌림
+  }
+
+  // ---- 템플릿(세계관) 자체 생성/삭제 ----
+  function slugify(str) {
+    return 'w_' + Date.now();
+  }
+
+  async function addTemplate() {
+    const name = window.prompt('새 템플릿(세계관) 이름을 입력해주세요. (예: 학원물)');
+    if (!name || !name.trim()) return;
+    const newWorld = {
+      id: slugify(name),
+      name: name.trim(),
+      shortName: name.trim(),
+      description: '',
+      color: '#9a9a9a',
+      fields: [{ key: 'name', label: '이름', type: 'text', core: true }],
+    };
+    worlds.push(newWorld);
+    const ok = await saveWorlds();
+    if (!ok) {
+      worlds.pop();
+      return;
+    }
+    renderSidebar();
+    return newWorld;
+  }
+
+  async function removeTemplate(world) {
+    if (worlds.length <= 1) {
+      window.alert('템플릿이 하나뿐이라 삭제할 수 없어요.');
+      return null;
+    }
+    if (!window.confirm(`"${world.name}" 템플릿을 삭제할까요? (이 템플릿으로 만든 기존 캐릭터의 데이터는 남지만, 화면에서 이 템플릿 자체는 사라져요)`)) {
+      return null;
+    }
+    const idx = worlds.findIndex((w) => w.id === world.id);
+    if (idx === -1) return null;
+    const removed = worlds.splice(idx, 1)[0];
+    const ok = await saveWorlds();
+    if (!ok) {
+      worlds.splice(idx, 0, removed);
+      return null;
+    }
+    if (activeWorld === world.id) {
+      activeWorld = 'all';
+      activeSubFilter = null;
+      renderGallery();
+    }
+    renderSidebar();
+    return worlds[0];
+  }
+
   function openEditForm(existing, world, presetSubcategory) {
     const isEdit = !!existing;
     const w = world || (existing ? worldById(existing.world) : worlds[0]);
@@ -618,9 +701,13 @@
       <h2 class="form-title">${isEdit ? '캐릭터 수정' : '캐릭터 생성'}</h2>
 
       <div class="image-area">
-        <select class="template-select" id="fWorld">
-          ${worlds.map((wo) => `<option value="${wo.id}" ${wo.id === w.id ? 'selected' : ''}>${wo.name}</option>`).join('')}
-        </select>
+        <div class="template-select-row">
+          <select class="template-select" id="fWorld">
+            ${worlds.map((wo) => `<option value="${wo.id}" ${wo.id === w.id ? 'selected' : ''}>${wo.name}</option>`).join('')}
+          </select>
+          <button type="button" class="template-mini-btn" id="templateAddBtn">+ 새 템플릿</button>
+          <button type="button" class="template-mini-btn danger" id="templateDelBtn">템플릿 삭제</button>
+        </div>
         <div class="image-slot-row">
           <label class="form-label">이미지 삽입(1) — 갤러리 카드용
             <input type="file" accept="image/*" class="form-input" id="fImage">
@@ -659,11 +746,35 @@
     renderDynamicSection(w, existing, presetSubcategory);
 
     let selectedWorldId = w.id;
+
+    function refreshWorldSelect(selectId) {
+      const sel = document.getElementById('fWorld');
+      sel.innerHTML = worlds.map((wo) => `<option value="${wo.id}" ${wo.id === selectId ? 'selected' : ''}>${wo.name}</option>`).join('');
+    }
+
+    function switchToWorld(newWorld) {
+      selectedWorldId = newWorld.id;
+      refreshWorldSelect(newWorld.id);
+      document.getElementById('fHistoryWrap').style.display = newWorld.hasHistory ? '' : 'none';
+      renderDynamicSection(newWorld, isEdit ? existing : null, null);
+    }
+
     document.getElementById('fWorld').addEventListener('change', (e) => {
       selectedWorldId = e.target.value;
       const newWorld = worldById(selectedWorldId);
       document.getElementById('fHistoryWrap').style.display = newWorld.hasHistory ? '' : 'none';
       renderDynamicSection(newWorld, isEdit ? existing : null, null);
+    });
+
+    document.getElementById('templateAddBtn').addEventListener('click', async () => {
+      const newWorld = await addTemplate();
+      if (newWorld) switchToWorld(newWorld);
+    });
+
+    document.getElementById('templateDelBtn').addEventListener('click', async () => {
+      const current = worldById(selectedWorldId);
+      const fallback = await removeTemplate(current);
+      if (fallback) switchToWorld(fallback);
     });
 
     document.getElementById('formFallbackLink').addEventListener('click', (e) => {
