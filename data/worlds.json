@@ -68,57 +68,6 @@
     ]
   },
   {
-    "id": "ymkb",
-    "name": "YMKB",
-    "shortName": "YMKB",
-    "description": "유메키보고등학교",
-    "color": "#ff8fab",
-    "useGradeClass": true,
-    "fields": [
-      {
-        "key": "name",
-        "label": "이름",
-        "type": "text",
-        "core": true
-      },
-      {
-        "key": "age",
-        "label": "나이",
-        "type": "text"
-      },
-      {
-        "key": "affiliation",
-        "label": "소속",
-        "type": "text"
-      },
-      {
-        "key": "position",
-        "label": "포지션",
-        "type": "text"
-      },
-      {
-        "key": "color",
-        "label": "담당 컬러",
-        "type": "text"
-      },
-      {
-        "key": "bio",
-        "label": "소개",
-        "type": "textarea"
-      },
-      {
-        "key": "personality",
-        "label": "성격",
-        "type": "textarea"
-      },
-      {
-        "key": "trivia",
-        "label": "여담",
-        "type": "textarea"
-      }
-    ]
-  },
-  {
     "id": "etc",
     "name": "ETC",
     "shortName": "ETC",
