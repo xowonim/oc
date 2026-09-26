@@ -613,6 +613,64 @@ body {
   color: #d9534f;
 }
 
+.managed-list-field {
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.managed-list-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.managed-list-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #eee;
+  border-radius: 999px;
+  padding: 3px 6px 3px 10px;
+  font-size: 12px;
+}
+
+.managed-list-pill-del {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--sub-text);
+  padding: 0 4px;
+}
+
+.managed-list-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.managed-list-add .form-input {
+  width: auto;
+  flex: 1;
+  min-width: 100px;
+  margin-top: 0;
+}
+
+.managed-list-add-btn {
+  border: none;
+  background: #222;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .modal-section-title {
   font-size: 13px;
   font-weight: 700;
