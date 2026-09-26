@@ -528,9 +528,6 @@ body {
 }
 
 .template-select {
-  position: absolute;
-  top: -14px;
-  left: 10px;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -555,6 +552,65 @@ body {
   padding: 1px 6px;
   margin-bottom: 14px;
   white-space: nowrap;
+}
+
+.field-manager-label-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.field-manager-label-edit {
+  border: none;
+  border-bottom: 1px dashed var(--border);
+  background: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 2px 0;
+  width: 110px;
+}
+
+.field-manager-label-edit:focus {
+  outline: none;
+  border-bottom-color: #222;
+}
+
+.template-select-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: absolute;
+  top: -14px;
+  left: 10px;
+}
+
+.template-select-row .template-select {
+  position: static;
+}
+
+.template-mini-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--sub-text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.template-mini-btn:hover {
+  border-color: #999;
+  color: var(--text);
+}
+
+.template-mini-btn.danger:hover {
+  border-color: #d9534f;
+  color: #d9534f;
 }
 
 .modal-section-title {
