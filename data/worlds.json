@@ -206,15 +206,15 @@
         "galleryGroup": true
       },
       {
+        "key": "f_1790459237442",
+        "label": "소속",
+        "type": "tags"
+      },
+      {
         "key": "f_1790459041303",
         "label": "거주지",
         "type": "category",
         "sidebarFilter": true
-      },
-      {
-        "key": "f_1790459237442",
-        "label": "소속",
-        "type": "tags"
       },
       {
         "key": "f_1790459175974",
