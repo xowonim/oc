@@ -41,14 +41,14 @@
         "type": "tags"
       },
       {
-        "key": "bio",
-        "label": "소개",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790458275955",
         "label": "영어 및 한자 표기",
         "type": "text"
+      },
+      {
+        "key": "bio",
+        "label": "소개",
+        "type": "textarea"
       },
       {
         "key": "personality",
