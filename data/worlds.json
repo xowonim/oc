@@ -222,14 +222,14 @@
         "type": "textarea"
       },
       {
-        "key": "f_1790459190239",
-        "label": "성격",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790459275250",
         "label": "학급",
         "type": "text"
+      },
+      {
+        "key": "f_1790459190239",
+        "label": "성격",
+        "type": "textarea"
       },
       {
         "key": "f_1790459196974",
