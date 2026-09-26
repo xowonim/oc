@@ -20,15 +20,15 @@
         "multi": true
       },
       {
+        "key": "f_1790458275955",
+        "label": "영어 및 한자 표기",
+        "type": "text"
+      },
+      {
         "key": "subcategory",
         "label": "세부 분류",
         "type": "category",
         "galleryGroup": true
-      },
-      {
-        "key": "f_1790458275955",
-        "label": "영어 및 한자 표기",
-        "type": "text"
       },
       {
         "key": "age",
