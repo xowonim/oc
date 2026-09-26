@@ -199,6 +199,11 @@
         "label": "학교",
         "type": "category",
         "galleryGroup": true
+      },
+      {
+        "key": "f_1790459034403",
+        "label": "소속",
+        "type": "text"
       }
     ]
   }
