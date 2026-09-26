@@ -222,14 +222,14 @@
         "type": "textarea"
       },
       {
-        "key": "f_1790459196974",
-        "label": "여담",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790459237442",
         "label": "소속",
         "type": "tags"
+      },
+      {
+        "key": "f_1790459196974",
+        "label": "여담",
+        "type": "textarea"
       }
     ]
   }
