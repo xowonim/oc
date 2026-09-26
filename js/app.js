@@ -124,19 +124,28 @@
     return ca.localeCompare(cb, 'ko');
   }
 
-  function subFilterField(world) {
-    if (!world) return null;
-    if (world.hasPart) return 'part';
-    if (world.hasSubcategory) return 'subcategory';
-    return null;
+  // ---- "분류(category)" 타입 항목: 사이드바 필터로 쓸지 / 갤러리 구역으로 쓸지는
+  // 항목 자체에 붙은 sidebarFilter / galleryGroup 표시로 정해진다 (세계관마다 자유롭게 다르게 설정 가능).
+  function sidebarCategoryField(world) {
+    if (!world || !world.fields) return null;
+    return world.fields.find((f) => f.type === 'category' && f.sidebarFilter) || null;
+  }
+
+  function galleryCategoryField(world) {
+    if (!world || !world.fields) return null;
+    return world.fields.find((f) => f.type === 'category' && f.galleryGroup) || null;
+  }
+
+  function fieldValue(c, key) {
+    return c.fields ? c.fields[key] : null;
   }
 
   // 캐릭터 데이터에서 실제로 쓰이고 있는 값만 뽑아 하위 분류 목록을 만든다.
   // (미리 정해둔 목록이 아니라, 그 값을 쓰는 캐릭터가 하나라도 생겨야 나타난다)
-  function distinctFieldValues(worldId, field) {
+  function distinctFieldValues(worldId, key) {
     const values = characters
-      .filter((c) => c.world === worldId && c[field])
-      .map((c) => c[field]);
+      .filter((c) => c.world === worldId && fieldValue(c, key))
+      .map((c) => fieldValue(c, key));
     return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
   }
 
@@ -145,9 +154,9 @@
     if (activeWorld !== 'all') {
       list = list.filter((c) => c.world === activeWorld);
       const world = worldById(activeWorld);
-      const field = subFilterField(world);
+      const field = sidebarCategoryField(world);
       if (activeSubFilter && field) {
-        list = list.filter((c) => c[field] === activeSubFilter);
+        list = list.filter((c) => fieldValue(c, field.key) === activeSubFilter);
       }
     }
     return list;
@@ -173,8 +182,8 @@
       });
       item.appendChild(btn);
 
-      const subField = subFilterField(entry);
-      const subSource = subField ? distinctFieldValues(entry.id, subField) : null;
+      const subField = sidebarCategoryField(entry);
+      const subSource = subField ? distinctFieldValues(entry.id, subField.key) : null;
       if (subSource && subSource.length > 0 && activeWorld === entry.id) {
         const subList = document.createElement('ul');
         subList.className = 'sub-list';
@@ -219,9 +228,10 @@
     galleryEl.innerHTML = '';
     const world = activeWorld === 'all' ? null : worldById(activeWorld);
     const filtered = getFiltered();
+    const groupField = world ? galleryCategoryField(world) : null;
 
-    if (world && world.groupInGallery) {
-      renderGroupedGallery(filtered, world);
+    if (world && groupField) {
+      renderGroupedGallery(filtered, world, groupField);
     } else {
       renderFlatGallery(sortForWorld(filtered, world), world);
     }
@@ -240,19 +250,19 @@
     galleryEl.appendChild(grid);
   }
 
-  function renderGroupedGallery(list, world) {
+  function renderGroupedGallery(list, world, groupField) {
     // 미리 정해둔 목록이 아니라, 지금 이 세계관에 실제로 존재하는 캐릭터들의
-    // 세부 분류 값만 모아서(자모/숫자 순 정렬) 구역을 만든다.
-    const known = list.filter((c) => c.subcategory).map((c) => c.subcategory);
-    const subNames = Array.from(new Set(known)).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
+    // 값만 모아서(자모/숫자 순 정렬) 구역을 만든다.
+    const known = list.filter((c) => fieldValue(c, groupField.key)).map((c) => fieldValue(c, groupField.key));
+    const groupNames = Array.from(new Set(known)).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
 
-    subNames.forEach((subName) => {
-      const items = list.filter((c) => c.subcategory === subName).sort(nameCompare);
+    groupNames.forEach((groupName) => {
+      const items = list.filter((c) => fieldValue(c, groupField.key) === groupName).sort(nameCompare);
       const section = document.createElement('section');
       section.className = 'gallery-section';
       const header = document.createElement('h2');
       header.className = 'gallery-section-title';
-      header.textContent = subName;
+      header.textContent = groupName;
       section.appendChild(header);
       const row = document.createElement('div');
       row.className = 'card-row';
@@ -261,7 +271,7 @@
       galleryEl.appendChild(section);
     });
 
-    const others = list.filter((c) => !c.subcategory).sort(nameCompare);
+    const others = list.filter((c) => !fieldValue(c, groupField.key)).sort(nameCompare);
     if (others.length > 0) {
       const section = document.createElement('section');
       section.className = 'gallery-section';
@@ -319,21 +329,17 @@
     const worldColor = world ? world.color : '#999';
 
     const rows = [];
-    if (world && world.hasPart && c.part) rows.push(['분류', c.part]);
-    if (c.subcategory) rows.push(['세부 분류', c.subcategory]);
     if (world && world.useGradeClass) {
       rows.push(['학년', c.grade ?? '-']);
       rows.push(['학급', c.class ?? '-']);
     }
-    if (world && world.fields) {
-      world.fields
-        .filter((f) => f.key !== 'name')
-        .forEach((f) => {
-          const raw = c.fields ? c.fields[f.key] : null;
-          const val = f.type === 'tags' ? renderTagPills(raw) : raw ?? '-';
-          rows.push([f.label, val]);
-        });
-    }
+
+    const shortFields = world && world.fields ? world.fields.filter((f) => f.key !== 'name' && f.type !== 'textarea') : [];
+    shortFields.forEach((f) => {
+      const raw = fieldValue(c, f.key);
+      const val = f.type === 'tags' ? renderTagPills(raw) : raw || '-';
+      rows.push([f.label, val]);
+    });
 
     const rowsHtml = rows
       .map(
@@ -346,13 +352,9 @@
       )
       .join('');
 
-    const extraSections = [
-      ['소개', c.bio],
-      ['성격', c.personality],
-      world && world.hasHistory ? ['작중행적', c.history] : null,
-      ['여담', c.trivia],
-    ]
-      .filter(Boolean)
+    const longFields = world && world.fields ? world.fields.filter((f) => f.type === 'textarea') : [];
+    const extraSections = longFields
+      .map((f) => [f.label, fieldValue(c, f.key)])
       .filter(([, v]) => v)
       .map(([label, v]) => `<h3 class="modal-section-title">${label}</h3><p class="modal-bio">${v}</p>`)
       .join('');
@@ -382,9 +384,10 @@
       imageWrap.innerHTML = `<div class="modal-image-placeholder">${PERSON_ICON}</div>`;
     }
 
+    const groupField = world ? galleryCategoryField(world) : null;
     document.getElementById('modalEditBtn').addEventListener('click', () => {
       closeModal();
-      openEditForm(c, world, c.subcategory || null);
+      openEditForm(c, world, groupField ? fieldValue(c, groupField.key) : null);
     });
 
     modalOverlay.classList.add('is-open');
@@ -474,33 +477,10 @@
 
   let currentFieldWidgets = {};
 
-  // ---- 부/세부 분류: 미리 정해둔 목록이 아니라 자유롭게 타이핑.
-  // (같은 세계관의 기존 캐릭터들이 썼던 값은 자동완성으로만 제안)
-  function renderFreeCategoryInput(container, w, field, labelText, inputId, currentValue) {
-    const wrap = document.createElement('label');
-    wrap.className = 'form-label';
-    const datalistId = inputId + 'List';
-    const suggestions = distinctFieldValues(w.id, field);
-    wrap.innerHTML = `${labelText}
-      <input type="text" class="form-input" id="${inputId}" list="${datalistId}" value="${escapeAttr(currentValue || '')}" placeholder="예: ${field === 'part' ? '1부' : '오토리 일행'}">
-      <datalist id="${datalistId}">
-        ${suggestions.map((v) => `<option value="${escapeAttr(v)}">`).join('')}
-      </datalist>`;
-    container.appendChild(wrap);
-  }
-
   function renderDynamicSection(w, existing, presetSubcategory) {
     const container = document.getElementById('dynamicFieldsContainer');
     container.innerHTML = '';
     currentFieldWidgets = {};
-
-    if (w.hasPart) {
-      renderFreeCategoryInput(container, w, 'part', '분류(부)', 'fPart', (existing && existing.part) || presetSubcategory);
-    }
-
-    if (w.hasSubcategory) {
-      renderFreeCategoryInput(container, w, 'subcategory', '세부 분류', 'fSubcategory', existing ? existing.subcategory : presetSubcategory);
-    }
 
     if (w.useGradeClass) {
       const gradeLabel = document.createElement('label');
@@ -516,7 +496,7 @@
       container.appendChild(classLabel);
     }
 
-    // ---- 기본/커스텀 항목 관리 (이름 포함, 이름만 삭제 불가) ----
+    // ---- 모든 항목(이름 포함)을 하나의 목록으로 관리: 추가·삭제·이름 변경 ----
     const fieldMgr = document.createElement('div');
     fieldMgr.className = 'field-manager';
 
@@ -528,7 +508,9 @@
       label.className = 'form-label field-manager-label';
       const rawVal = f.key === 'name'
         ? (existing ? existing.name : '')
-        : existing && existing.fields ? existing.fields[f.key] : null;
+        : f.type === 'category'
+          ? (existing ? fieldValue(existing, f.key) : presetSubcategory)
+          : existing && existing.fields ? existing.fields[f.key] : null;
 
       const labelEditRow = document.createElement('div');
       labelEditRow.className = 'field-manager-label-edit-row';
@@ -547,6 +529,16 @@
         tagBadge.className = 'field-type-tag';
         tagBadge.textContent = '태그';
         labelEditRow.appendChild(tagBadge);
+      } else if (f.type === 'category') {
+        const catBadge = document.createElement('span');
+        catBadge.className = 'field-type-tag';
+        catBadge.textContent = '분류';
+        labelEditRow.appendChild(catBadge);
+      } else if (f.type === 'textarea') {
+        const taBadge = document.createElement('span');
+        taBadge.className = 'field-type-tag';
+        taBadge.textContent = '긴 글';
+        labelEditRow.appendChild(taBadge);
       }
       label.appendChild(labelEditRow);
 
@@ -554,6 +546,41 @@
         const tagContainer = document.createElement('div');
         label.appendChild(tagContainer);
         currentFieldWidgets[f.key] = mountTagInput(tagContainer, rawVal);
+      } else if (f.type === 'textarea') {
+        const ta = document.createElement('textarea');
+        ta.className = 'form-input form-textarea';
+        ta.setAttribute('data-field-key', f.key);
+        ta.value = rawVal || '';
+        label.appendChild(ta);
+      } else if (f.type === 'category') {
+        const datalistId = 'dl_' + f.key;
+        const suggestions = distinctFieldValues(w.id, f.key);
+        const valInput = document.createElement('input');
+        valInput.type = 'text';
+        valInput.className = 'form-input';
+        valInput.setAttribute('data-field-key', f.key);
+        valInput.setAttribute('list', datalistId);
+        valInput.placeholder = '자유롭게 입력 (예: 1부, 오토리 일행 등)';
+        valInput.value = rawVal || '';
+        label.appendChild(valInput);
+        const datalist = document.createElement('datalist');
+        datalist.id = datalistId;
+        datalist.innerHTML = suggestions.map((v) => `<option value="${escapeAttr(v)}">`).join('');
+        label.appendChild(datalist);
+
+        const roleRow = document.createElement('div');
+        roleRow.className = 'field-category-roles';
+        const sideChk = document.createElement('label');
+        sideChk.className = 'field-category-role-chk';
+        sideChk.innerHTML = `<input type="checkbox" ${f.sidebarFilter ? 'checked' : ''}> 사이드바 필터로 쓰기`;
+        sideChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'sidebarFilter', e.target.checked));
+        const galChk = document.createElement('label');
+        galChk.className = 'field-category-role-chk';
+        galChk.innerHTML = `<input type="checkbox" ${f.galleryGroup ? 'checked' : ''}> 갤러리 구역으로 묶기`;
+        galChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'galleryGroup', e.target.checked));
+        roleRow.appendChild(sideChk);
+        roleRow.appendChild(galChk);
+        label.appendChild(roleRow);
       } else {
         const valInput = document.createElement('input');
         valInput.type = 'text';
@@ -588,6 +615,8 @@
       <select class="form-input" id="newFieldType">
         <option value="text">텍스트 입력</option>
         <option value="tags">태그 입력</option>
+        <option value="textarea">긴 글(소개·성격 등)</option>
+        <option value="category">분류(사이드바·갤러리 구역)</option>
       </select>
       <button type="button" class="field-manager-add-btn" id="newFieldBtn">+ 항목 추가</button>
     `;
@@ -659,16 +688,25 @@
     if (!ok) f.label = prevLabel; // 저장 실패 시 되돌림
   }
 
+  async function toggleFieldRole(world, key, roleKey, checked) {
+    const f = (world.fields || []).find((f) => f.key === key);
+    if (!f) return;
+    const prev = f[roleKey];
+    f[roleKey] = checked;
+    const ok = await saveWorlds();
+    if (!ok) f[roleKey] = prev;
+  }
+
   // ---- 템플릿(세계관) 자체 생성/삭제 ----
-  function slugify(str) {
+  function slugify() {
     return 'w_' + Date.now();
   }
 
   async function addTemplate() {
-    const name = window.prompt('새 템플릿(세계관) 이름을 입력해주세요. (예: 학원물)');
+    const name = window.prompt('새 템플릿(세계관) 이름을 입력해주세요.');
     if (!name || !name.trim()) return;
     const newWorld = {
-      id: slugify(name),
+      id: slugify(),
       name: name.trim(),
       shortName: name.trim(),
       description: '',
@@ -757,19 +795,6 @@
 
       <div id="dynamicFieldsContainer"></div>
 
-      <label class="form-label">소개
-        <textarea class="form-input form-textarea" id="fBio">${isEdit ? existing.bio || '' : ''}</textarea>
-      </label>
-      <label class="form-label">성격
-        <textarea class="form-input form-textarea" id="fPersonality">${isEdit ? existing.personality || '' : ''}</textarea>
-      </label>
-      <label class="form-label" id="fHistoryWrap" style="${w.hasHistory ? '' : 'display:none'}">작중행적
-        <textarea class="form-input form-textarea" id="fHistory">${isEdit ? existing.history || '' : ''}</textarea>
-      </label>
-      <label class="form-label">여담
-        <textarea class="form-input form-textarea" id="fTrivia">${isEdit ? existing.trivia || '' : ''}</textarea>
-      </label>
-
       <p class="form-error" id="formError"></p>
       <button class="form-submit" id="formSubmit">${isEdit ? '저장하기' : '만들기'}</button>
       <p class="form-hint">
@@ -790,15 +815,12 @@
     function switchToWorld(newWorld) {
       selectedWorldId = newWorld.id;
       refreshWorldSelect(newWorld.id);
-      document.getElementById('fHistoryWrap').style.display = newWorld.hasHistory ? '' : 'none';
       renderDynamicSection(newWorld, isEdit ? existing : null, null);
     }
 
     document.getElementById('fWorld').addEventListener('change', (e) => {
       selectedWorldId = e.target.value;
-      const newWorld = worldById(selectedWorldId);
-      document.getElementById('fHistoryWrap').style.display = newWorld.hasHistory ? '' : 'none';
-      renderDynamicSection(newWorld, isEdit ? existing : null, null);
+      switchToWorld(worldById(selectedWorldId));
     });
 
     document.getElementById('templateAddBtn').addEventListener('click', async () => {
@@ -834,22 +856,19 @@
     const obj = existing ? { ...existing } : { id: 'character-id', world: world.id, name: '캐릭터 이름', image: null };
     delete obj._path;
     delete obj._sha;
-    if (world.hasPart) obj.part = obj.part || presetSubcategory || '';
-    if (world.hasSubcategory) obj.subcategory = obj.subcategory || presetSubcategory || '';
     if (world.useGradeClass) {
       obj.grade = obj.grade ?? null;
       obj.class = obj.class ?? null;
     }
-    if (world.fields && !obj.fields) {
-      obj.fields = {};
-      world.fields
-        .filter((f) => f.key !== 'name')
-        .forEach((f) => (obj.fields[f.key] = f.type === 'tags' ? [] : '-'));
-    }
-    obj.bio = obj.bio || '소개';
-    obj.personality = obj.personality || '성격';
-    if (world.hasHistory) obj.history = obj.history || '작중행적';
-    obj.trivia = obj.trivia || '여담';
+    obj.fields = obj.fields || {};
+    (world.fields || [])
+      .filter((f) => f.key !== 'name')
+      .forEach((f) => {
+        if (obj.fields[f.key] !== undefined) return;
+        if (f.type === 'tags') obj.fields[f.key] = [];
+        else if (f.type === 'category') obj.fields[f.key] = presetSubcategory || '';
+        else obj.fields[f.key] = '-';
+      });
 
     const path = existing ? existing._path : `${CHARACTERS_DIR}/새캐릭터.json`;
     const value = JSON.stringify(obj, null, 2);
@@ -915,11 +934,6 @@
       profileImage: isEdit ? existing.profileImage || null : null,
     };
 
-    const partEl = document.getElementById('fPart');
-    if (partEl) obj.part = partEl.value;
-    const subEl = document.getElementById('fSubcategory');
-    if (subEl) obj.subcategory = subEl.value;
-
     if (world.useGradeClass) {
       const gradeVal = document.getElementById('fGrade').value;
       obj.grade = gradeVal === '' ? null : Number(gradeVal);
@@ -931,16 +945,14 @@
       if (f.key === 'name') return; // 이름은 obj.name(최상위)에 이미 저장됨
       if (f.type === 'tags') {
         obj.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
+      } else if (f.type === 'textarea') {
+        const ta = document.querySelector(`textarea[data-field-key="${f.key}"]`);
+        obj.fields[f.key] = ta ? ta.value.trim() : '';
       } else {
         const input = document.querySelector(`[data-field-key="${f.key}"]`);
         obj.fields[f.key] = input ? input.value.trim() || '-' : '-';
       }
     });
-
-    obj.bio = document.getElementById('fBio').value.trim();
-    obj.personality = document.getElementById('fPersonality').value.trim();
-    if (world.hasHistory) obj.history = document.getElementById('fHistory').value.trim();
-    obj.trivia = document.getElementById('fTrivia').value.trim();
 
     const submitBtn = document.getElementById('formSubmit');
     submitBtn.disabled = true;
@@ -983,6 +995,7 @@
       }
 
       closeFormModal();
+      renderSidebar();
       renderGallery();
     } catch (err) {
       console.error(err);
@@ -1042,8 +1055,7 @@
 
   createTopBtnEl.addEventListener('click', () => {
     const world = activeWorld === 'all' ? worlds[0] : worldById(activeWorld);
-    const field = subFilterField(world);
-    const preset = field && activeSubFilter ? activeSubFilter : null;
+    const preset = activeSubFilter || null;
     openEditForm(null, world, preset);
   });
 
