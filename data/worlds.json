@@ -18,16 +18,16 @@
         "type": "text"
       },
       {
+        "key": "age",
+        "label": "나이",
+        "type": "text"
+      },
+      {
         "key": "part",
         "label": "분류",
         "type": "category",
         "sidebarFilter": true,
         "galleryGroup": false
-      },
-      {
-        "key": "age",
-        "label": "나이",
-        "type": "text"
       },
       {
         "key": "subcategory",
