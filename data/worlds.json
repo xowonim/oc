@@ -37,7 +37,7 @@
       },
       {
         "key": "role",
-        "label": "역할",
+        "label": "종족",
         "type": "text"
       },
       {
