@@ -50,14 +50,14 @@
         "type": "textarea"
       },
       {
-        "key": "history",
-        "label": "작중행적",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790457594679",
         "label": "영어 및 한자 표기",
         "type": "text"
+      },
+      {
+        "key": "history",
+        "label": "작중행적",
+        "type": "textarea"
       },
       {
         "key": "trivia",
