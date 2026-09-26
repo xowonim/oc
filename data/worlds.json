@@ -6,16 +6,65 @@
     "description": "신들의 세계관",
     "color": "#8f9dff",
     "fields": [
-      { "key": "name", "label": "이름", "type": "text", "core": true },
-      { "key": "part", "label": "분류(부)", "type": "category", "sidebarFilter": true, "multi": true },
-      { "key": "subcategory", "label": "세부 분류", "type": "category", "galleryGroup": true },
-      { "key": "age", "label": "나이", "type": "text" },
-      { "key": "role", "label": "역할", "type": "text" },
-      { "key": "power", "label": "능력", "type": "tags" },
-      { "key": "bio", "label": "소개", "type": "textarea" },
-      { "key": "personality", "label": "성격", "type": "textarea" },
-      { "key": "history", "label": "작중행적", "type": "textarea" },
-      { "key": "trivia", "label": "여담", "type": "textarea" }
+      {
+        "key": "name",
+        "label": "이름",
+        "type": "text",
+        "core": true
+      },
+      {
+        "key": "part",
+        "label": "분류(부)",
+        "type": "category",
+        "sidebarFilter": true,
+        "multi": true
+      },
+      {
+        "key": "subcategory",
+        "label": "세부 분류",
+        "type": "category",
+        "galleryGroup": true
+      },
+      {
+        "key": "age",
+        "label": "나이",
+        "type": "text"
+      },
+      {
+        "key": "role",
+        "label": "역할",
+        "type": "text"
+      },
+      {
+        "key": "power",
+        "label": "능력",
+        "type": "tags"
+      },
+      {
+        "key": "bio",
+        "label": "소개",
+        "type": "textarea"
+      },
+      {
+        "key": "personality",
+        "label": "성격",
+        "type": "textarea"
+      },
+      {
+        "key": "history",
+        "label": "작중행적",
+        "type": "textarea"
+      },
+      {
+        "key": "trivia",
+        "label": "여담",
+        "type": "textarea"
+      },
+      {
+        "key": "f_1790458275955",
+        "label": "영어 및 한자 표기",
+        "type": "text"
+      }
     ]
   },
   {
@@ -26,13 +75,43 @@
     "color": "#7fd8be",
     "useGradeClass": true,
     "fields": [
-      { "key": "name", "label": "이름", "type": "text", "core": true },
-      { "key": "subcategory", "label": "지역", "type": "category", "sidebarFilter": true },
-      { "key": "age", "label": "나이", "type": "text" },
-      { "key": "role", "label": "역할", "type": "text" },
-      { "key": "bio", "label": "소개", "type": "textarea" },
-      { "key": "personality", "label": "성격", "type": "textarea" },
-      { "key": "trivia", "label": "여담", "type": "textarea" }
+      {
+        "key": "name",
+        "label": "이름",
+        "type": "text",
+        "core": true
+      },
+      {
+        "key": "subcategory",
+        "label": "지역",
+        "type": "category",
+        "sidebarFilter": true
+      },
+      {
+        "key": "age",
+        "label": "나이",
+        "type": "text"
+      },
+      {
+        "key": "role",
+        "label": "역할",
+        "type": "text"
+      },
+      {
+        "key": "bio",
+        "label": "소개",
+        "type": "textarea"
+      },
+      {
+        "key": "personality",
+        "label": "성격",
+        "type": "textarea"
+      },
+      {
+        "key": "trivia",
+        "label": "여담",
+        "type": "textarea"
+      }
     ]
   },
   {
@@ -43,14 +122,47 @@
     "color": "#ff8fab",
     "useGradeClass": true,
     "fields": [
-      { "key": "name", "label": "이름", "type": "text", "core": true },
-      { "key": "age", "label": "나이", "type": "text" },
-      { "key": "affiliation", "label": "소속", "type": "text" },
-      { "key": "position", "label": "포지션", "type": "text" },
-      { "key": "color", "label": "담당 컬러", "type": "text" },
-      { "key": "bio", "label": "소개", "type": "textarea" },
-      { "key": "personality", "label": "성격", "type": "textarea" },
-      { "key": "trivia", "label": "여담", "type": "textarea" }
+      {
+        "key": "name",
+        "label": "이름",
+        "type": "text",
+        "core": true
+      },
+      {
+        "key": "age",
+        "label": "나이",
+        "type": "text"
+      },
+      {
+        "key": "affiliation",
+        "label": "소속",
+        "type": "text"
+      },
+      {
+        "key": "position",
+        "label": "포지션",
+        "type": "text"
+      },
+      {
+        "key": "color",
+        "label": "담당 컬러",
+        "type": "text"
+      },
+      {
+        "key": "bio",
+        "label": "소개",
+        "type": "textarea"
+      },
+      {
+        "key": "personality",
+        "label": "성격",
+        "type": "textarea"
+      },
+      {
+        "key": "trivia",
+        "label": "여담",
+        "type": "textarea"
+      }
     ]
   },
   {
@@ -60,18 +172,55 @@
     "description": "그 외 캐릭터",
     "color": "#ffb26b",
     "fixedOrderList": [
-      "리리", "유희", "도운", "소선",
-      "반숙", "완숙", "선우", "영모", "탄숙",
-      "리율", "티아"
+      "리리",
+      "유희",
+      "도운",
+      "소선",
+      "반숙",
+      "완숙",
+      "선우",
+      "영모",
+      "탄숙",
+      "리율",
+      "티아"
     ],
     "fields": [
-      { "key": "name", "label": "이름", "type": "text", "core": true },
-      { "key": "age", "label": "나이", "type": "text" },
-      { "key": "affiliation", "label": "소속", "type": "text" },
-      { "key": "role", "label": "역할", "type": "text" },
-      { "key": "bio", "label": "소개", "type": "textarea" },
-      { "key": "personality", "label": "성격", "type": "textarea" },
-      { "key": "trivia", "label": "여담", "type": "textarea" }
+      {
+        "key": "name",
+        "label": "이름",
+        "type": "text",
+        "core": true
+      },
+      {
+        "key": "age",
+        "label": "나이",
+        "type": "text"
+      },
+      {
+        "key": "affiliation",
+        "label": "소속",
+        "type": "text"
+      },
+      {
+        "key": "role",
+        "label": "역할",
+        "type": "text"
+      },
+      {
+        "key": "bio",
+        "label": "소개",
+        "type": "textarea"
+      },
+      {
+        "key": "personality",
+        "label": "성격",
+        "type": "textarea"
+      },
+      {
+        "key": "trivia",
+        "label": "여담",
+        "type": "textarea"
+      }
     ]
   }
 ]
