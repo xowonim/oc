@@ -25,7 +25,7 @@
       },
       {
         "key": "part",
-        "label": "분류(부)",
+        "label": "분류",
         "type": "category",
         "sidebarFilter": true,
         "multi": true
