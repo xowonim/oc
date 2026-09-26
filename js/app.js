@@ -708,63 +708,58 @@
     });
   }
 
-  // worlds.json의 sha는 절대 오래 캐싱하지 않는다 — 다른 탭이나 깃허브 웹에서 직접
-  // 파일을 바꿨을 수도 있으므로, 저장 직전에 항상 최신 sha를 다시 물어본다.
-  async function getWorldsSha() {
+  // 다른 탭/다른 기기에서 이 사이트를 동시에 열어놓고 있을 수 있으므로, worlds.json은
+  // 절대 "내가 기억하는 예전 버전 전체"를 그대로 덮어쓰지 않는다. 대신 저장할 때마다
+  // 깃허브에 실제로 올라가 있는 최신 내용을 다시 받아와서, 그 위에 "이번에 하려던 변경 하나"만
+  // 다시 적용한 다음 저장한다. 이러면 다른 곳에서 그 사이에 만들어둔 변경이 있어도
+  // 서로 덮어쓰지 않고 같이 남는다.
+  async function fetchLiveWorlds() {
     const res = await fetch(
       `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${WORLDS_PATH}?ref=${GITHUB_BRANCH}`,
       { headers: { Accept: 'application/vnd.github+json' } }
     );
-    if (res.ok) {
-      const data = await res.json();
-      worldsSha = data.sha;
-    }
-    return worldsSha;
+    if (!res.ok) throw new Error(`세계관 파일을 불러오지 못했어요 (${res.status})`);
+    const data = await res.json();
+    const decoded = b64DecodeUnicode(data.content);
+    return { data: JSON.parse(decoded), sha: data.sha };
   }
 
-  async function saveWorldsInner() {
+  // mutateFn(freshWorlds)는 방금 깃허브에서 받아온 "가장 최신" worlds 배열을 직접 바꾸는
+  // 함수다. 저장이 sha 충돌로 실패하면, 최신 내용을 다시 받아서 mutateFn을 한 번 더
+  // 적용해보는 식으로 최대 세 번까지 재시도한다.
+  async function applyWorldsChange(mutateFn) {
     const token = getToken();
     if (!token) {
       window.alert('세계관/항목 구조를 저장하려면 먼저 "⚙ 저장 설정"에서 토큰을 등록해주세요.');
       return false;
     }
-    const content = b64EncodeUnicode(JSON.stringify(worlds, null, 2));
-    try {
-      const sha = await getWorldsSha();
-      const result = await githubPutFile(WORLDS_PATH, content, 'Update worlds.json (field template)', sha);
-      worldsSha = result.content ? result.content.sha : worldsSha;
-      return true;
-    } catch (err) {
-      // sha 충돌(다른 곳에서 방금 파일이 바뀐 경우)이면, 최신 sha로 최대 세 번까지 자동으로 다시 시도한다.
-      const isShaConflict = /sha|does not match|expected/i.test(err.message || '');
-      if (isShaConflict) {
-        for (let attempt = 0; attempt < 3; attempt++) {
-          try {
-            const freshSha = await getWorldsSha();
-            const result = await githubPutFile(WORLDS_PATH, content, 'Update worlds.json (field template)', freshSha);
-            worldsSha = result.content ? result.content.sha : worldsSha;
-            return true;
-          } catch (retryErr) {
-            if (attempt === 2) {
-              console.error(retryErr);
-              window.alert('세계관 저장에 실패했어요: ' + retryErr.message);
-              return false;
-            }
-          }
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const { data: freshWorlds, sha } = await fetchLiveWorlds();
+        mutateFn(freshWorlds);
+        const content = b64EncodeUnicode(JSON.stringify(freshWorlds, null, 2));
+        const result = await githubPutFile(WORLDS_PATH, content, 'Update worlds.json (field template)', sha);
+        worlds = freshWorlds;
+        worldsSha = result.content ? result.content.sha : undefined;
+        return true;
+      } catch (err) {
+        const isConflict = /sha|does not match|expected/i.test(err.message || '');
+        if (!isConflict || attempt === 2) {
+          console.error(err);
+          window.alert('세계관 저장에 실패했어요: ' + err.message);
+          return false;
         }
+        // 충돌이면 루프를 다시 돌면서 최신 내용을 받아 다시 시도한다.
       }
-      console.error(err);
-      window.alert('세계관 저장에 실패했어요: ' + err.message);
-      return false;
     }
+    return false;
   }
 
-  // 항목을 빠르게 여러 번 연달아 바꾸면(체크박스 연속 클릭 등) saveWorlds()가 동시에 여러 번
-  // 실행되면서 서로의 sha를 밟고 지나가는 경합이 생길 수 있다. 이를 막기 위해 저장 요청을
-  // 한 번에 하나씩, 순서대로만 실행되도록 줄을 세운다.
+  // 항목을 빠르게 여러 번 연달아 바꾸면(체크박스 연속 클릭 등) 저장 요청이 동시에 여러 번
+  // 실행될 수 있으므로, 한 번에 하나씩 순서대로만 실행되도록 줄을 세운다.
   let worldsSaveQueue = Promise.resolve(true);
-  function saveWorlds() {
-    const run = worldsSaveQueue.then(() => saveWorldsInner());
+  function saveWorldsWithMutation(mutateFn) {
+    const run = worldsSaveQueue.then(() => applyWorldsChange(mutateFn));
     worldsSaveQueue = run.catch(() => false);
     return run;
   }
@@ -798,32 +793,42 @@
   async function addFieldToWorld(world, label, type) {
     const snap = snapshotFormValues(world);
     const key = 'f_' + Date.now();
-    world.fields = world.fields || [];
-    world.fields.push({ key, label, type });
-    const ok = await saveWorlds();
-    if (ok) renderDynamicSection(world, snap, null);
+    const ok = await saveWorldsWithMutation((freshWorlds) => {
+      const w = freshWorlds.find((x) => x.id === world.id);
+      if (w) {
+        w.fields = w.fields || [];
+        w.fields.push({ key, label, type });
+      }
+    });
+    const freshWorld = worldById(world.id) || world;
+    if (ok) renderDynamicSection(freshWorld, snap, null);
   }
 
   async function removeFieldFromWorld(world, key) {
     if (!window.confirm('이 항목을 삭제할까요? (기존 캐릭터의 값은 남아있지만 화면에 더 이상 보이지 않아요)')) return;
     const snap = snapshotFormValues(world);
-    world.fields = (world.fields || []).filter((f) => f.key !== key);
-    const ok = await saveWorlds();
-    if (ok) renderDynamicSection(world, snap, null);
+    const ok = await saveWorldsWithMutation((freshWorlds) => {
+      const w = freshWorlds.find((x) => x.id === world.id);
+      if (w) w.fields = (w.fields || []).filter((f) => f.key !== key);
+    });
+    const freshWorld = worldById(world.id) || world;
+    if (ok) renderDynamicSection(freshWorld, snap, null);
   }
 
   async function moveFieldInWorld(world, key, direction) {
-    const arr = world.fields || [];
-    const idx = arr.findIndex((f) => f.key === key);
-    const newIdx = idx + direction;
-    if (idx === -1 || newIdx < 0 || newIdx >= arr.length) return;
     const snap = snapshotFormValues(world);
-    [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
-    const ok = await saveWorlds();
+    const ok = await saveWorldsWithMutation((freshWorlds) => {
+      const w = freshWorlds.find((x) => x.id === world.id);
+      if (!w) return;
+      const arr = w.fields || [];
+      const idx = arr.findIndex((f) => f.key === key);
+      const newIdx = idx + direction;
+      if (idx === -1 || newIdx < 0 || newIdx >= arr.length) return;
+      [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+    });
     if (ok) {
-      renderDynamicSection(world, snap, null);
-    } else {
-      [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]]; // 저장 실패 시 되돌림
+      const freshWorld = worldById(world.id) || world;
+      renderDynamicSection(freshWorld, snap, null);
     }
   }
 
@@ -831,24 +836,32 @@
     const f = (world.fields || []).find((f) => f.key === key);
     if (!f || f.label === newLabel) return;
     const prevLabel = f.label;
-    f.label = newLabel;
-    const ok = await saveWorlds();
-    if (!ok) f.label = prevLabel; // 저장 실패 시 되돌림
+    const ok = await saveWorldsWithMutation((freshWorlds) => {
+      const w = freshWorlds.find((x) => x.id === world.id);
+      const target = w && (w.fields || []).find((ff) => ff.key === key);
+      if (target) target.label = newLabel;
+    });
+    if (!ok) {
+      // 저장 실패: 입력창을 원래 라벨로 되돌린다
+      document.querySelectorAll('.field-manager-label-edit').forEach((inp) => {
+        if (inp.value === newLabel) inp.value = prevLabel;
+      });
+    }
   }
 
   async function toggleFieldRole(world, key, roleKey, checked) {
-    const f = (world.fields || []).find((f) => f.key === key);
-    if (!f) return;
-    // multi(여러 개 선택) 전환은 입력 위젯 자체가 바뀌므로 미리 값을 스냅샷해둔다.
-    const snap = roleKey === 'multi' ? snapshotFormValues(world) : null;
-    const prev = f[roleKey];
-    f[roleKey] = checked;
-    const ok = await saveWorlds();
-    if (!ok) {
-      f[roleKey] = prev;
-      return;
+    // 실패하든, multi(여러 개 선택) 전환처럼 입력 위젯 자체가 바뀌든, 다시 그려야 할 수 있으니
+    // 미리 지금 폼에 입력해둔 값을 스냅샷해둔다.
+    const snap = snapshotFormValues(world);
+    const ok = await saveWorldsWithMutation((freshWorlds) => {
+      const w = freshWorlds.find((x) => x.id === world.id);
+      const f = w && (w.fields || []).find((ff) => ff.key === key);
+      if (f) f[roleKey] = checked;
+    });
+    const freshWorld = worldById(world.id) || world;
+    if (!ok || roleKey === 'multi') {
+      renderDynamicSection(freshWorld, snap, null);
     }
-    if (snap) renderDynamicSection(world, snap, null);
   }
 
   // ---- 템플릿(세계관) 자체 생성/삭제 ----
@@ -867,31 +880,28 @@
       color: '#9a9a9a',
       fields: [{ key: 'name', label: '이름', type: 'text', core: true }],
     };
-    worlds.push(newWorld);
-    const ok = await saveWorlds();
-    if (!ok) {
-      worlds.pop();
-      return;
-    }
+    const ok = await saveWorldsWithMutation((freshWorlds) => {
+      freshWorlds.push(newWorld);
+    });
+    if (!ok) return;
     renderSidebar();
-    return newWorld;
+    return worldById(newWorld.id);
   }
 
   async function renameTemplate(world) {
     const newName = window.prompt('템플릿 이름을 바꿔주세요.', world.name);
     if (!newName || !newName.trim() || newName.trim() === world.name) return null;
-    const prevName = world.name;
-    const prevShort = world.shortName;
-    world.name = newName.trim();
-    world.shortName = newName.trim();
-    const ok = await saveWorlds();
-    if (!ok) {
-      world.name = prevName;
-      world.shortName = prevShort;
-      return null;
-    }
+    const trimmed = newName.trim();
+    const ok = await saveWorldsWithMutation((freshWorlds) => {
+      const w = freshWorlds.find((x) => x.id === world.id);
+      if (w) {
+        w.name = trimmed;
+        w.shortName = trimmed;
+      }
+    });
+    if (!ok) return null;
     renderSidebar();
-    return world;
+    return worldById(world.id);
   }
 
   async function removeTemplate(world) {
@@ -902,14 +912,11 @@
     if (!window.confirm(`"${world.name}" 템플릿을 삭제할까요? (이 템플릿으로 만든 기존 캐릭터의 데이터는 남지만, 화면에서 이 템플릿 자체는 사라져요)`)) {
       return null;
     }
-    const idx = worlds.findIndex((w) => w.id === world.id);
-    if (idx === -1) return null;
-    const removed = worlds.splice(idx, 1)[0];
-    const ok = await saveWorlds();
-    if (!ok) {
-      worlds.splice(idx, 0, removed);
-      return null;
-    }
+    const ok = await saveWorldsWithMutation((freshWorlds) => {
+      const idx = freshWorlds.findIndex((w) => w.id === world.id);
+      if (idx !== -1) freshWorlds.splice(idx, 1);
+    });
+    if (!ok) return null;
     if (activeWorld === world.id) {
       activeWorld = 'all';
       activeSubFilter = null;
@@ -1035,6 +1042,10 @@
 
   function b64EncodeUnicode(str) {
     return btoa(String.fromCharCode(...new TextEncoder().encode(str)));
+  }
+
+  function b64DecodeUnicode(str) {
+    return new TextDecoder().decode(Uint8Array.from(atob(str.replace(/\n/g, '')), (c) => c.charCodeAt(0)));
   }
 
   function fileToBase64(file) {
