@@ -722,7 +722,7 @@
     return worldsSha;
   }
 
-  async function saveWorlds() {
+  async function saveWorldsInner() {
     const token = getToken();
     if (!token) {
       window.alert('세계관/항목 구조를 저장하려면 먼저 "⚙ 저장 설정"에서 토큰을 등록해주세요.');
@@ -735,24 +735,38 @@
       worldsSha = result.content ? result.content.sha : worldsSha;
       return true;
     } catch (err) {
-      // sha 충돌(다른 곳에서 방금 파일이 바뀐 경우)이면, 최신 sha로 한 번만 자동으로 다시 시도한다.
+      // sha 충돌(다른 곳에서 방금 파일이 바뀐 경우)이면, 최신 sha로 최대 세 번까지 자동으로 다시 시도한다.
       const isShaConflict = /sha|does not match|expected/i.test(err.message || '');
       if (isShaConflict) {
-        try {
-          const freshSha = await getWorldsSha();
-          const result = await githubPutFile(WORLDS_PATH, content, 'Update worlds.json (field template)', freshSha);
-          worldsSha = result.content ? result.content.sha : worldsSha;
-          return true;
-        } catch (retryErr) {
-          console.error(retryErr);
-          window.alert('세계관 저장에 실패했어요: ' + retryErr.message);
-          return false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const freshSha = await getWorldsSha();
+            const result = await githubPutFile(WORLDS_PATH, content, 'Update worlds.json (field template)', freshSha);
+            worldsSha = result.content ? result.content.sha : worldsSha;
+            return true;
+          } catch (retryErr) {
+            if (attempt === 2) {
+              console.error(retryErr);
+              window.alert('세계관 저장에 실패했어요: ' + retryErr.message);
+              return false;
+            }
+          }
         }
       }
       console.error(err);
       window.alert('세계관 저장에 실패했어요: ' + err.message);
       return false;
     }
+  }
+
+  // 항목을 빠르게 여러 번 연달아 바꾸면(체크박스 연속 클릭 등) saveWorlds()가 동시에 여러 번
+  // 실행되면서 서로의 sha를 밟고 지나가는 경합이 생길 수 있다. 이를 막기 위해 저장 요청을
+  // 한 번에 하나씩, 순서대로만 실행되도록 줄을 세운다.
+  let worldsSaveQueue = Promise.resolve(true);
+  function saveWorlds() {
+    const run = worldsSaveQueue.then(() => saveWorldsInner());
+    worldsSaveQueue = run.catch(() => false);
+    return run;
   }
 
   // 항목을 추가/삭제/순서변경 하면서 다시 그릴 때, 이미 폼에 입력해둔 값을 잃지 않도록
