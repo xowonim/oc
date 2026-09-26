@@ -1,12 +1,18 @@
 (async function () {
-  // ---- GitHub 저장소 설정 (worlds.json은 고정 파일, characters는 자동 목록) ----
+  // ---- GitHub 저장소 설정 ----
   const GITHUB_OWNER = 'xowonim';
   const GITHUB_REPO = 'oc';
   const GITHUB_BRANCH = 'main';
   const CHARACTERS_DIR = 'data/characters';
 
+  const PERSON_ICON = `
+    <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 12c2.76 0 5-2.46 5-5.5S14.76 1 12 1 7 3.46 7 6.5 9.24 12 12 12zm0 2.5c-3.86 0-11 2-11 6v2.5h22V20.5c0-4-7.14-6-11-6z"/>
+    </svg>`;
+
+  const navListEl = document.getElementById('navList');
   const galleryEl = document.getElementById('gallery');
-  const filterEl = document.getElementById('worldFilter');
+  const logoHomeEl = document.getElementById('logoHome');
   const modalOverlay = document.getElementById('modalOverlay');
   const modalBody = document.getElementById('modalBody');
   const modalClose = document.getElementById('modalClose');
@@ -14,14 +20,14 @@
   let worlds = [];
   let characters = [];
   let activeWorld = 'all';
+  let activeSubcategory = null;
 
   function worldById(id) {
     return worlds.find((w) => w.id === id);
   }
 
-  function initials(name) {
-    if (!name || name === '-') return '?';
-    return name.trim().charAt(0);
+  function nameCompare(a, b) {
+    return (a.name || '').localeCompare(b.name || '', 'ko');
   }
 
   async function loadWorlds() {
@@ -71,113 +77,277 @@
     }
   }
 
-  function renderFilters() {
-    worlds.forEach((world) => {
+  // ---------- 정렬 ----------
+  function sortForWorld(list, world) {
+    if (!world) {
+      return [...list].sort(nameCompare);
+    }
+
+    if (world.fixedOrderList) {
+      const order = world.fixedOrderList;
+      return [...list].sort((a, b) => {
+        const ia = order.indexOf(a.name);
+        const ib = order.indexOf(b.name);
+        const sa = ia === -1 ? Infinity : ia;
+        const sb = ib === -1 ? Infinity : ib;
+        if (sa !== sb) return sa - sb;
+        return nameCompare(a, b);
+      });
+    }
+
+    if (world.subcategories) {
+      return [...list].sort((a, b) => {
+        const ia = world.subcategories.indexOf(a.subcategory);
+        const ib = world.subcategories.indexOf(b.subcategory);
+        const sa = ia === -1 ? Infinity : ia;
+        const sb = ib === -1 ? Infinity : ib;
+        if (sa !== sb) return sa - sb;
+        if (world.useGradeClass) {
+          const gc = gradeClassCompare(a, b);
+          if (gc !== 0) return gc;
+        }
+        return nameCompare(a, b);
+      });
+    }
+
+    if (world.useGradeClass) {
+      return [...list].sort((a, b) => {
+        const gc = gradeClassCompare(a, b);
+        if (gc !== 0) return gc;
+        return nameCompare(a, b);
+      });
+    }
+
+    return [...list].sort(nameCompare);
+  }
+
+  function gradeClassCompare(a, b) {
+    const ga = a.grade == null ? Infinity : a.grade;
+    const gb = b.grade == null ? Infinity : b.grade;
+    if (ga !== gb) return ga - gb;
+    const ca = a.class == null ? '' : String(a.class);
+    const cb = b.class == null ? '' : String(b.class);
+    return ca.localeCompare(cb, 'ko');
+  }
+
+  function getFilteredSorted() {
+    let list = characters;
+
+    if (activeWorld !== 'all') {
+      list = list.filter((c) => c.world === activeWorld);
+      if (activeSubcategory) {
+        list = list.filter((c) => c.subcategory === activeSubcategory);
+      }
+    }
+
+    const world = activeWorld === 'all' ? null : worldById(activeWorld);
+    return sortForWorld(list, world);
+  }
+
+  // ---------- 사이드바 렌더링 ----------
+  function renderSidebar() {
+    navListEl.innerHTML = '';
+
+    const entries = [{ id: 'all', name: 'All', shortName: 'All' }, ...worlds];
+
+    entries.forEach((entry) => {
+      const item = document.createElement('div');
+      item.className = 'nav-item';
+
       const btn = document.createElement('button');
-      btn.className = 'filter-pill';
-      btn.dataset.world = world.id;
-      btn.style.setProperty('--world-color', world.color);
-      btn.textContent = world.shortName || world.name;
-      filterEl.appendChild(btn);
+      btn.className = 'nav-btn' + (activeWorld === entry.id ? ' is-active' : '');
+      btn.textContent = entry.shortName || entry.name;
+      if (entry.color) btn.style.setProperty('--nav-color', entry.color);
+      btn.addEventListener('click', () => {
+        activeWorld = entry.id;
+        activeSubcategory = null;
+        renderSidebar();
+        renderGallery();
+      });
+      item.appendChild(btn);
+
+      if (entry.subcategories && activeWorld === entry.id) {
+        const subList = document.createElement('ul');
+        subList.className = 'sub-list';
+
+        const allSub = document.createElement('li');
+        allSub.className = 'sub-item';
+        const allSubBtn = document.createElement('button');
+        allSubBtn.className = 'sub-item-btn' + (!activeSubcategory ? ' is-active' : '');
+        allSubBtn.textContent = '전체';
+        allSubBtn.addEventListener('click', () => {
+          activeSubcategory = null;
+          renderSidebar();
+          renderGallery();
+        });
+        allSub.appendChild(allSubBtn);
+        subList.appendChild(allSub);
+
+        entry.subcategories.forEach((sub) => {
+          const li = document.createElement('li');
+          li.className = 'sub-item';
+          const subBtn = document.createElement('button');
+          subBtn.className = 'sub-item-btn' + (activeSubcategory === sub ? ' is-active' : '');
+          subBtn.textContent = sub;
+          subBtn.addEventListener('click', () => {
+            activeSubcategory = sub;
+            renderSidebar();
+            renderGallery();
+          });
+          li.appendChild(subBtn);
+          subList.appendChild(li);
+        });
+
+        item.appendChild(subList);
+      }
+
+      navListEl.appendChild(item);
     });
   }
 
+  // ---------- 갤러리 렌더링 ----------
   function renderGallery() {
     galleryEl.innerHTML = '';
+    const list = getFilteredSorted();
 
-    if (characters.length === 0) {
+    if (list.length === 0) {
       galleryEl.innerHTML = '<p class="empty-msg">아직 등록된 캐릭터가 없어요.</p>';
+      galleryEl.appendChild(buildAddCard());
       return;
     }
-
-    const list = characters.filter(
-      (c) => activeWorld === 'all' || c.world === activeWorld
-    );
 
     list.forEach((c) => {
       const world = worldById(c.world);
       const card = document.createElement('div');
       card.className = 'char-card';
-      card.style.setProperty('--world-color', world ? world.color : '#ccc');
 
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'char-card-image-wrap';
       if (c.image) {
         const img = document.createElement('img');
         img.className = 'char-card-image';
         img.src = c.image;
         img.alt = c.name;
         img.onerror = () => {
-          img.replaceWith(buildPlaceholder(c.name));
+          imgWrap.innerHTML = PERSON_ICON;
+          imgWrap.querySelector('svg').classList.add('char-card-placeholder-icon');
         };
-        card.appendChild(img);
+        imgWrap.appendChild(img);
       } else {
-        card.appendChild(buildPlaceholder(c.name));
+        imgWrap.innerHTML = PERSON_ICON;
+        imgWrap.querySelector('svg').classList.add('char-card-placeholder-icon');
       }
+      card.appendChild(imgWrap);
 
       const info = document.createElement('div');
       info.className = 'char-card-info';
-      info.innerHTML = `
-        <p class="char-card-name">${c.name}</p>
-        <span class="char-card-world-tag" style="background:${world ? world.color : '#999'}">${world ? world.shortName : ''}</span>
-      `;
+      info.innerHTML = `<p class="char-card-name">${c.name}</p>`;
       card.appendChild(info);
 
       card.addEventListener('click', () => openModal(c));
       galleryEl.appendChild(card);
     });
+
+    galleryEl.appendChild(buildAddCard());
   }
 
-  function buildPlaceholder(name) {
-    const div = document.createElement('div');
-    div.className = 'char-card-placeholder';
-    div.textContent = initials(name);
-    return div;
+  // 현재 보고 있는 세계관/카테고리에 맞춰 GitHub "새 파일 만들기" 페이지로 바로 연결되는 타일
+  function buildAddCard() {
+    const world = activeWorld === 'all' ? null : worldById(activeWorld);
+    const template = buildTemplateJson(world);
+    const filename = `${CHARACTERS_DIR}/새캐릭터.json`;
+    const url =
+      `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/new/${GITHUB_BRANCH}` +
+      `?filename=${encodeURIComponent(filename)}` +
+      `&value=${encodeURIComponent(template)}`;
+
+    const a = document.createElement('a');
+    a.className = 'add-card';
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.innerHTML = `<span class="add-card-plus">+</span><span>캐릭터 생성</span>`;
+    return a;
   }
 
+  function buildTemplateJson(world) {
+    const obj = {
+      id: 'character-id',
+      world: world ? world.id : 'sinsekai',
+      name: '캐릭터 이름',
+      age: 0,
+      affiliation: '소속',
+      image: null,
+    };
+    if (world && world.subcategories) {
+      obj.subcategory = activeSubcategory || world.subcategories[0];
+    }
+    if (world && world.useGradeClass) {
+      obj.grade = null;
+      obj.class = null;
+    }
+    if (world && world.fields) {
+      obj.fields = {};
+      world.fields.forEach((f) => {
+        obj.fields[f.key] = '-';
+      });
+    }
+    obj.bio = '캐릭터 소개';
+    return JSON.stringify(obj, null, 2);
+  }
+
+  // ---------- 모달 ----------
   function openModal(c) {
     const world = worldById(c.world);
     const worldColor = world ? world.color : '#999';
 
-    let imageHtml = '';
-    if (c.image) {
-      imageHtml = `<img class="modal-image" src="${c.image}" alt="${c.name}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'modal-image-placeholder',style:'background:${worldColor}',textContent:'${initials(c.name)}'}))">`;
-    } else {
-      imageHtml = `<div class="modal-image-placeholder" style="background:${worldColor}">${initials(c.name)}</div>`;
+    const rows = [];
+    rows.push(['나이', c.age ?? '-']);
+    rows.push(['소속', c.affiliation ?? '-']);
+    if (c.subcategory) rows.push(['세부 분류', c.subcategory]);
+    if (world && world.useGradeClass) {
+      rows.push(['학년', c.grade ?? '-']);
+      rows.push(['학급', c.class ?? '-']);
+    }
+    if (world && world.fields) {
+      world.fields.forEach((f) => {
+        const val = (c.fields && c.fields[f.key]) ?? '-';
+        rows.push([f.label, val]);
+      });
     }
 
-    const fieldDefs = world ? world.fields : [];
-    const baseRows = `
-      <div class="modal-field-row">
-        <div class="modal-field-label">나이</div>
-        <div class="modal-field-value">${c.age ?? '-'}</div>
-      </div>
-      <div class="modal-field-row">
-        <div class="modal-field-label">소속</div>
-        <div class="modal-field-value">${c.affiliation ?? '-'}</div>
-      </div>
-    `;
-
-    const extraRows = fieldDefs
-      .map((f) => {
-        const val = (c.fields && c.fields[f.key]) ?? '-';
-        return `
+    const rowsHtml = rows
+      .map(
+        ([label, value]) => `
           <div class="modal-field-row">
-            <div class="modal-field-label">${f.label}</div>
-            <div class="modal-field-value">${val}</div>
+            <div class="modal-field-label">${label}</div>
+            <div class="modal-field-value">${value}</div>
           </div>
-        `;
-      })
+        `
+      )
       .join('');
 
     modalBody.innerHTML = `
-      <div class="modal-image-wrap">${imageHtml}</div>
+      <div class="modal-image-wrap" id="modalImageWrap"></div>
       <p class="modal-name">${c.name}</p>
       <span class="modal-world-tag" style="background:${worldColor}">${world ? world.name : ''}</span>
-      <div class="modal-fields">
-        ${baseRows}
-        ${extraRows}
-      </div>
+      <div class="modal-fields">${rowsHtml}</div>
       ${c.bio ? `<p class="modal-bio">${c.bio}</p>` : ''}
     `;
+
+    const imageWrap = document.getElementById('modalImageWrap');
+    if (c.image) {
+      const img = document.createElement('img');
+      img.className = 'modal-image';
+      img.src = c.image;
+      img.alt = c.name;
+      img.onerror = () => {
+        imageWrap.innerHTML = `<div class="modal-image-placeholder">${PERSON_ICON}</div>`;
+      };
+      imageWrap.appendChild(img);
+    } else {
+      imageWrap.innerHTML = `<div class="modal-image-placeholder">${PERSON_ICON}</div>`;
+    }
 
     modalOverlay.classList.add('is-open');
   }
@@ -194,17 +364,15 @@
     if (e.key === 'Escape') closeModal();
   });
 
-  filterEl.addEventListener('click', (e) => {
-    const btn = e.target.closest('.filter-pill');
-    if (!btn) return;
-    activeWorld = btn.dataset.world;
-    filterEl.querySelectorAll('.filter-pill').forEach((b) => b.classList.remove('is-active'));
-    btn.classList.add('is-active');
+  logoHomeEl.addEventListener('click', () => {
+    activeWorld = 'all';
+    activeSubcategory = null;
+    renderSidebar();
     renderGallery();
   });
 
   [worlds, characters] = await Promise.all([loadWorlds(), loadCharacters()]);
 
-  renderFilters();
+  renderSidebar();
   renderGallery();
 })();

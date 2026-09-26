@@ -1,53 +1,61 @@
 [
   {
+    "id": "sinsekai",
+    "name": "神世界",
+    "shortName": "神世界",
+    "description": "신들의 세계관",
+    "color": "#8f9dff",
+    "subcategories": [
+      "오토리 일행",
+      "음양오행의 신",
+      "이원향",
+      "글리샬라볼라스",
+      "바드르 제단",
+      "예레미야",
+      "예르모 행성"
+    ],
+    "fields": [
+      { "key": "role", "label": "역할" },
+      { "key": "power", "label": "능력" }
+    ]
+  },
+  {
+    "id": "oc",
+    "name": "OC",
+    "shortName": "OC",
+    "description": "지역 기반 오리지널 캐릭터",
+    "color": "#7fd8be",
+    "subcategories": ["요조라", "미조레", "시노노메"],
+    "useGradeClass": true,
+    "fields": [
+      { "key": "role", "label": "역할" }
+    ]
+  },
+  {
     "id": "ymkb",
-    "name": "유메키보",
-    "shortName": "유메키보",
-    "description": "아이돌/학원 세계관",
+    "name": "YMKB",
+    "shortName": "YMKB",
+    "description": "유메키보고등학교",
     "color": "#ff8fab",
+    "useGradeClass": true,
     "fields": [
       { "key": "position", "label": "포지션" },
-      { "key": "grade", "label": "학년/반" },
-      { "key": "color", "label": "담당 컬러" },
-      { "key": "hobby", "label": "취미" }
+      { "key": "color", "label": "담당 컬러" }
     ]
   },
   {
-    "id": "fantasy",
-    "name": "판타지물",
-    "shortName": "판타지",
-    "description": "이세계/마법 세계관",
-    "color": "#8f9dff",
-    "fields": [
-      { "key": "race", "label": "종족" },
-      { "key": "role", "label": "직위/직업" },
-      { "key": "power", "label": "특수 능력" },
-      { "key": "weapon", "label": "무기/도구" }
-    ]
-  },
-  {
-    "id": "genre",
-    "name": "장르 기반 캐릭터",
-    "shortName": "장르물",
-    "description": "미스터리/액션 등 장르 중심 세계관",
+    "id": "etc",
+    "name": "ETC",
+    "shortName": "ETC",
+    "description": "그 외 캐릭터",
     "color": "#ffb26b",
+    "fixedOrderList": [
+      "리리", "유희", "도운", "소선",
+      "반숙", "완숙", "선우", "영모", "탄숙",
+      "리율", "티아"
+    ],
     "fields": [
-      { "key": "job", "label": "직업" },
-      { "key": "skill", "label": "특기" },
-      { "key": "background", "label": "배경 키워드" }
-    ]
-  },
-  {
-    "id": "daily",
-    "name": "일상물",
-    "shortName": "일상",
-    "description": "현실 기반 일상 세계관",
-    "color": "#7fd8be",
-    "fields": [
-      { "key": "school", "label": "학교/직장" },
-      { "key": "grade", "label": "학년/직급" },
-      { "key": "hobby", "label": "취미" },
-      { "key": "personality", "label": "성격" }
+      { "key": "role", "label": "역할" }
     ]
   }
 ]

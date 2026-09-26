@@ -3,21 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OC ARCHIVE</title>
+<title>xowon's OC</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header class="site-header">
-    <h1 class="site-title">OC ARCHIVE</h1>
-    <p class="site-sub">세계관별 캐릭터 아카이브</p>
-  </header>
+  <div class="layout">
+    <aside class="sidebar">
+      <button class="logo-home" id="logoHome">xowon's OC</button>
+      <nav class="nav-list" id="navList"></nav>
+    </aside>
 
-  <nav class="world-filter" id="worldFilter">
-    <button class="filter-pill is-active" data-world="all">전체</button>
-  </nav>
-
-  <main class="gallery" id="gallery"></main>
+    <main class="content">
+      <div class="gallery" id="gallery"></div>
+    </main>
+  </div>
 
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal-card" id="modalCard">
