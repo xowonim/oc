@@ -136,11 +136,6 @@ body {
   cursor: pointer;
 }
 
-.sub-item-btn::before {
-  content: '○ ';
-  font-size: 9px;
-}
-
 .sub-item-btn:hover {
   background: #f5f5f5;
 }
