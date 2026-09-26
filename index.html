@@ -12,6 +12,7 @@
     <aside class="sidebar">
       <button class="logo-home" id="logoHome">xowon's OC</button>
       <nav class="nav-list" id="navList"></nav>
+      <button class="settings-btn" id="settingsBtn">⚙ 저장 설정</button>
     </aside>
 
     <main class="content">
@@ -19,10 +20,27 @@
     </main>
   </div>
 
+  <!-- 캐릭터 상세 모달 -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal-card" id="modalCard">
       <button class="modal-close" id="modalClose" aria-label="닫기">&times;</button>
       <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- 캐릭터 생성/수정 폼 -->
+  <div class="modal-overlay" id="formOverlay">
+    <div class="modal-card" id="formCard">
+      <button class="modal-close" id="formClose" aria-label="닫기">&times;</button>
+      <div class="modal-body" id="formBody"></div>
+    </div>
+  </div>
+
+  <!-- 저장 설정(토큰) 모달 -->
+  <div class="modal-overlay" id="settingsOverlay">
+    <div class="modal-card" id="settingsCard">
+      <button class="modal-close" id="settingsClose" aria-label="닫기">&times;</button>
+      <div class="modal-body" id="settingsBody"></div>
     </div>
   </div>
 
