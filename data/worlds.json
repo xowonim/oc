@@ -22,11 +22,11 @@
         "label": "분류",
         "type": "category",
         "sidebarFilter": true,
-        "galleryGroup": true
+        "galleryGroup": false
       },
       {
         "key": "subcategory",
-        "label": "소속",
+        "label": "세부 분류",
         "type": "category",
         "galleryGroup": true
       },
