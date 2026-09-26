@@ -18,6 +18,9 @@
     "groupInGallery": true,
     "hasHistory": true,
     "fields": [
+      { "key": "name", "label": "이름", "type": "text", "core": true },
+      { "key": "age", "label": "나이", "type": "text" },
+      { "key": "affiliation", "label": "소속", "type": "text" },
       { "key": "role", "label": "역할", "type": "text" },
       { "key": "power", "label": "능력", "type": "tags" }
     ]
@@ -31,6 +34,9 @@
     "subcategories": ["요조라", "미조레", "시노노메"],
     "useGradeClass": true,
     "fields": [
+      { "key": "name", "label": "이름", "type": "text", "core": true },
+      { "key": "age", "label": "나이", "type": "text" },
+      { "key": "affiliation", "label": "소속", "type": "text" },
       { "key": "role", "label": "역할", "type": "text" }
     ]
   },
@@ -42,6 +48,9 @@
     "color": "#ff8fab",
     "useGradeClass": true,
     "fields": [
+      { "key": "name", "label": "이름", "type": "text", "core": true },
+      { "key": "age", "label": "나이", "type": "text" },
+      { "key": "affiliation", "label": "소속", "type": "text" },
       { "key": "position", "label": "포지션", "type": "text" },
       { "key": "color", "label": "담당 컬러", "type": "text" }
     ]
@@ -58,6 +67,9 @@
       "리율", "티아"
     ],
     "fields": [
+      { "key": "name", "label": "이름", "type": "text", "core": true },
+      { "key": "age", "label": "나이", "type": "text" },
+      { "key": "affiliation", "label": "소속", "type": "text" },
       { "key": "role", "label": "역할", "type": "text" }
     ]
   }
