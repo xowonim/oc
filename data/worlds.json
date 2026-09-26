@@ -46,14 +46,14 @@
         "type": "textarea"
       },
       {
-        "key": "personality",
-        "label": "성격",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790457842396",
         "label": "능력",
         "type": "text"
+      },
+      {
+        "key": "personality",
+        "label": "성격",
+        "type": "textarea"
       },
       {
         "key": "history",
