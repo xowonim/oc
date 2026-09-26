@@ -35,14 +35,14 @@
         "type": "text"
       },
       {
-        "key": "f_1790457594679",
-        "label": "영어 및 한자 표기",
-        "type": "text"
-      },
-      {
         "key": "power",
         "label": "능력",
         "type": "tags"
+      },
+      {
+        "key": "f_1790457594679",
+        "label": "영어 및 한자 표기",
+        "type": "text"
       },
       {
         "key": "bio",
