@@ -5,15 +5,17 @@
     "shortName": "神世界",
     "description": "신들의 세계관",
     "color": "#8f9dff",
-    "hasPart": true,
-    "hasSubcategory": true,
-    "groupInGallery": true,
-    "hasHistory": true,
     "fields": [
       { "key": "name", "label": "이름", "type": "text", "core": true },
+      { "key": "part", "label": "분류(부)", "type": "category", "sidebarFilter": true },
+      { "key": "subcategory", "label": "세부 분류", "type": "category", "galleryGroup": true },
       { "key": "age", "label": "나이", "type": "text" },
       { "key": "role", "label": "역할", "type": "text" },
-      { "key": "power", "label": "능력", "type": "tags" }
+      { "key": "power", "label": "능력", "type": "tags" },
+      { "key": "bio", "label": "소개", "type": "textarea" },
+      { "key": "personality", "label": "성격", "type": "textarea" },
+      { "key": "history", "label": "작중행적", "type": "textarea" },
+      { "key": "trivia", "label": "여담", "type": "textarea" }
     ]
   },
   {
@@ -22,12 +24,15 @@
     "shortName": "OC",
     "description": "지역 기반 오리지널 캐릭터",
     "color": "#7fd8be",
-    "hasSubcategory": true,
     "useGradeClass": true,
     "fields": [
       { "key": "name", "label": "이름", "type": "text", "core": true },
+      { "key": "subcategory", "label": "지역", "type": "category", "sidebarFilter": true },
       { "key": "age", "label": "나이", "type": "text" },
-      { "key": "role", "label": "역할", "type": "text" }
+      { "key": "role", "label": "역할", "type": "text" },
+      { "key": "bio", "label": "소개", "type": "textarea" },
+      { "key": "personality", "label": "성격", "type": "textarea" },
+      { "key": "trivia", "label": "여담", "type": "textarea" }
     ]
   },
   {
@@ -42,7 +47,10 @@
       { "key": "age", "label": "나이", "type": "text" },
       { "key": "affiliation", "label": "소속", "type": "text" },
       { "key": "position", "label": "포지션", "type": "text" },
-      { "key": "color", "label": "담당 컬러", "type": "text" }
+      { "key": "color", "label": "담당 컬러", "type": "text" },
+      { "key": "bio", "label": "소개", "type": "textarea" },
+      { "key": "personality", "label": "성격", "type": "textarea" },
+      { "key": "trivia", "label": "여담", "type": "textarea" }
     ]
   },
   {
@@ -60,7 +68,10 @@
       { "key": "name", "label": "이름", "type": "text", "core": true },
       { "key": "age", "label": "나이", "type": "text" },
       { "key": "affiliation", "label": "소속", "type": "text" },
-      { "key": "role", "label": "역할", "type": "text" }
+      { "key": "role", "label": "역할", "type": "text" },
+      { "key": "bio", "label": "소개", "type": "textarea" },
+      { "key": "personality", "label": "성격", "type": "textarea" },
+      { "key": "trivia", "label": "여담", "type": "textarea" }
     ]
   }
 ]
