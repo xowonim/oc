@@ -17,6 +17,7 @@
   const galleryEl = document.getElementById('gallery');
   const logoHomeEl = document.getElementById('logoHome');
   const settingsBtnEl = document.getElementById('settingsBtn');
+  const createTopBtnEl = document.getElementById('createTopBtn');
   const modalOverlay = document.getElementById('modalOverlay');
   const modalBody = document.getElementById('modalBody');
   const modalClose = document.getElementById('modalClose');
@@ -226,7 +227,6 @@
     const grid = document.createElement('div');
     grid.className = 'card-row';
     list.forEach((c) => grid.appendChild(buildCard(c)));
-    grid.appendChild(buildAddCard(world, null));
     galleryEl.appendChild(grid);
   }
 
@@ -242,7 +242,6 @@
       const row = document.createElement('div');
       row.className = 'card-row';
       items.forEach((c) => row.appendChild(buildCard(c)));
-      row.appendChild(buildAddCard(world, subName));
       section.appendChild(row);
       galleryEl.appendChild(section);
     });
@@ -292,14 +291,6 @@
     return card;
   }
 
-  function buildAddCard(world, presetSubcategory) {
-    const a = document.createElement('div');
-    a.className = 'add-card';
-    a.innerHTML = `<span class="add-card-plus">+</span><span>캐릭터 생성</span>`;
-    a.addEventListener('click', () => openEditForm(null, world, presetSubcategory));
-    return a;
-  }
-
   // ---------- 태그 표시(읽기 전용) ----------
   function renderTagPills(values) {
     if (!Array.isArray(values) || values.length === 0) return '-';
@@ -314,8 +305,6 @@
     const worldColor = world ? world.color : '#999';
 
     const rows = [];
-    rows.push(['나이', c.age ?? '-']);
-    rows.push(['소속', c.affiliation ?? '-']);
     if (world && world.parts && c.part) rows.push(['분류', c.part]);
     if (c.subcategory) rows.push(['세부 분류', c.subcategory]);
     if (world && world.useGradeClass) {
@@ -323,11 +312,13 @@
       rows.push(['학급', c.class ?? '-']);
     }
     if (world && world.fields) {
-      world.fields.forEach((f) => {
-        const raw = c.fields ? c.fields[f.key] : null;
-        const val = f.type === 'tags' ? renderTagPills(raw) : raw ?? '-';
-        rows.push([f.label, val]);
-      });
+      world.fields
+        .filter((f) => f.key !== 'name')
+        .forEach((f) => {
+          const raw = c.fields ? c.fields[f.key] : null;
+          const val = f.type === 'tags' ? renderTagPills(raw) : raw ?? '-';
+          rows.push([f.label, val]);
+        });
     }
 
     const rowsHtml = rows
@@ -508,7 +499,7 @@
       container.appendChild(classLabel);
     }
 
-    // ---- 커스텀 항목 관리 ----
+    // ---- 기본/커스텀 항목 관리 (이름 포함, 이름만 삭제 불가) ----
     const fieldMgr = document.createElement('div');
     fieldMgr.className = 'field-manager';
 
@@ -518,7 +509,9 @@
 
       const label = document.createElement('label');
       label.className = 'form-label field-manager-label';
-      const rawVal = existing && existing.fields ? existing.fields[f.key] : null;
+      const rawVal = f.key === 'name'
+        ? (existing ? existing.name : '')
+        : existing && existing.fields ? existing.fields[f.key] : null;
 
       if (f.type === 'tags') {
         label.innerHTML = `${f.label} <span class="field-type-tag">태그</span>`;
@@ -531,12 +524,19 @@
       }
       row.appendChild(label);
 
-      const delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.className = 'field-manager-del';
-      delBtn.textContent = '항목 삭제';
-      delBtn.addEventListener('click', () => removeFieldFromWorld(w, f.key));
-      row.appendChild(delBtn);
+      if (f.core) {
+        const badge = document.createElement('span');
+        badge.className = 'field-manager-core-badge';
+        badge.textContent = '필수 항목';
+        row.appendChild(badge);
+      } else {
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'field-manager-del';
+        delBtn.textContent = '항목 삭제';
+        delBtn.addEventListener('click', () => removeFieldFromWorld(w, f.key));
+        row.appendChild(delBtn);
+      }
 
       fieldMgr.appendChild(row);
     });
@@ -617,32 +617,21 @@
     formBody.innerHTML = `
       <h2 class="form-title">${isEdit ? '캐릭터 수정' : '캐릭터 생성'}</h2>
 
-      <label class="form-label">템플릿(세계관)
-        <select class="form-input" id="fWorld">
+      <div class="image-area">
+        <select class="template-select" id="fWorld">
           ${worlds.map((wo) => `<option value="${wo.id}" ${wo.id === w.id ? 'selected' : ''}>${wo.name}</option>`).join('')}
         </select>
-      </label>
-
-      <div class="image-slot-row">
-        <label class="form-label">이미지 삽입(1) — 갤러리 카드용
-          <input type="file" accept="image/*" class="form-input" id="fImage">
-        </label>
-        <label class="form-label">이미지 삽입(2) — 상세 프로필용
-          <input type="file" accept="image/*" class="form-input" id="fProfileImage">
-        </label>
+        <div class="image-slot-row">
+          <label class="form-label">이미지 삽입(1) — 갤러리 카드용
+            <input type="file" accept="image/*" class="form-input" id="fImage">
+          </label>
+          <label class="form-label">이미지 삽입(2) — 상세 프로필용
+            <input type="file" accept="image/*" class="form-input" id="fProfileImage">
+          </label>
+        </div>
+        ${isEdit && existing.image ? `<p class="form-hint">현재 이미지(1): ${existing.image}</p>` : ''}
+        ${isEdit && existing.profileImage ? `<p class="form-hint">현재 이미지(2): ${existing.profileImage}</p>` : ''}
       </div>
-      ${isEdit && existing.image ? `<p class="form-hint">현재 이미지(1): ${existing.image}</p>` : ''}
-      ${isEdit && existing.profileImage ? `<p class="form-hint">현재 이미지(2): ${existing.profileImage}</p>` : ''}
-
-      <label class="form-label">이름
-        <input type="text" class="form-input" id="fName" value="${escapeAttr(isEdit ? existing.name : '')}">
-      </label>
-      <label class="form-label">나이
-        <input type="number" class="form-input" id="fAge" value="${isEdit && existing.age != null ? existing.age : ''}">
-      </label>
-      <label class="form-label">소속
-        <input type="text" class="form-input" id="fAffiliation" value="${escapeAttr(isEdit ? existing.affiliation || '' : '')}">
-      </label>
 
       <div id="dynamicFieldsContainer"></div>
 
@@ -690,7 +679,7 @@
   }
 
   function buildGithubNewFileUrl(world, presetSubcategory, existing) {
-    const obj = existing ? { ...existing } : { id: 'character-id', world: world.id, name: '캐릭터 이름', age: 0, affiliation: '소속', image: null };
+    const obj = existing ? { ...existing } : { id: 'character-id', world: world.id, name: '캐릭터 이름', image: null };
     delete obj._path;
     delete obj._sha;
     if (world.parts) obj.part = obj.part || world.parts[0];
@@ -701,7 +690,9 @@
     }
     if (world.fields && !obj.fields) {
       obj.fields = {};
-      world.fields.forEach((f) => (obj.fields[f.key] = f.type === 'tags' ? [] : '-'));
+      world.fields
+        .filter((f) => f.key !== 'name')
+        .forEach((f) => (obj.fields[f.key] = f.type === 'tags' ? [] : '-'));
     }
     obj.bio = obj.bio || '소개';
     obj.personality = obj.personality || '성격';
@@ -747,7 +738,8 @@
     const errorEl = document.getElementById('formError');
     errorEl.textContent = '';
 
-    const name = document.getElementById('fName').value.trim();
+    const nameInput = document.querySelector('[data-field-key="name"]');
+    const name = nameInput ? nameInput.value.trim() : '';
     if (!name) {
       errorEl.textContent = '이름을 입력해주세요.';
       return;
@@ -763,13 +755,10 @@
       setToken(t.trim());
     }
 
-    const ageVal = document.getElementById('fAge').value;
     const obj = {
       id: isEdit ? existing.id : `char-${Date.now()}`,
       world: world.id,
       name,
-      age: ageVal === '' ? null : Number(ageVal),
-      affiliation: document.getElementById('fAffiliation').value.trim(),
       image: isEdit ? existing.image || null : null,
       profileImage: isEdit ? existing.profileImage || null : null,
     };
@@ -785,17 +774,16 @@
       obj.class = document.getElementById('fClass').value.trim() || null;
     }
 
-    if (world.fields && world.fields.length > 0) {
-      obj.fields = {};
-      world.fields.forEach((f) => {
-        if (f.type === 'tags') {
-          obj.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
-        } else {
-          const input = document.querySelector(`[data-field-key="${f.key}"]`);
-          obj.fields[f.key] = input ? input.value.trim() || '-' : '-';
-        }
-      });
-    }
+    obj.fields = {};
+    (world.fields || []).forEach((f) => {
+      if (f.key === 'name') return; // 이름은 obj.name(최상위)에 이미 저장됨
+      if (f.type === 'tags') {
+        obj.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
+      } else {
+        const input = document.querySelector(`[data-field-key="${f.key}"]`);
+        obj.fields[f.key] = input ? input.value.trim() || '-' : '-';
+      }
+    });
 
     obj.bio = document.getElementById('fBio').value.trim();
     obj.personality = document.getElementById('fPersonality').value.trim();
@@ -898,6 +886,13 @@
       closeSettingsModal();
     });
     settingsOverlay.classList.add('is-open');
+  });
+
+  createTopBtnEl.addEventListener('click', () => {
+    const world = activeWorld === 'all' ? worlds[0] : worldById(activeWorld);
+    const field = subFilterField(world);
+    const preset = field && activeSubFilter ? activeSubFilter : null;
+    openEditForm(null, world, preset);
   });
 
   [worlds, characters] = await Promise.all([loadWorlds(), loadCharacters()]);
