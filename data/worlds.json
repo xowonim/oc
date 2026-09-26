@@ -211,15 +211,15 @@
         "galleryGroup": true
       },
       {
+        "key": "f_1790459275250",
+        "label": "학급",
+        "type": "text"
+      },
+      {
         "key": "f_1790459041303",
         "label": "거주지",
         "type": "category",
         "sidebarFilter": true
-      },
-      {
-        "key": "f_1790459275250",
-        "label": "학급",
-        "type": "text"
       },
       {
         "key": "f_1790459175974",
