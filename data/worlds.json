@@ -200,15 +200,15 @@
         "type": "text"
       },
       {
+        "key": "f_1790459237442",
+        "label": "소속",
+        "type": "tags"
+      },
+      {
         "key": "f_1790459018143",
         "label": "학교",
         "type": "category",
         "galleryGroup": true
-      },
-      {
-        "key": "f_1790459237442",
-        "label": "소속",
-        "type": "tags"
       },
       {
         "key": "f_1790459041303",
