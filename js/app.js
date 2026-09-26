@@ -299,6 +299,15 @@
     }
   }
 
+  // 이미지 무단 저장 방지: 우클릭(데스크탑) / 길게 누르기(아이폰·아이패드)로 저장되지 않도록 막는다.
+  // (완벽히 막을 수는 없지만 - 스크린샷까지는 못 막음 - 기본적인 저장 시도는 차단된다)
+  function protectImage(img) {
+    img.setAttribute('draggable', 'false');
+    img.classList.add('no-save-image');
+    img.addEventListener('contextmenu', (e) => e.preventDefault());
+    img.addEventListener('dragstart', (e) => e.preventDefault());
+  }
+
   function buildCard(c) {
     const card = document.createElement('div');
     card.className = 'char-card';
@@ -309,6 +318,7 @@
       img.className = 'char-card-image';
       img.src = c.image;
       img.alt = c.name;
+      protectImage(img);
       img.onerror = () => {
         imgWrap.innerHTML = PERSON_ICON;
         imgWrap.querySelector('svg').classList.add('char-card-placeholder-icon');
@@ -380,6 +390,9 @@
       <div class="modal-fields">${rowsHtml}</div>
       ${extraSections}
       <button class="modal-edit-btn" id="modalEditBtn">수정하기</button>
+      <div class="modal-delete-row">
+        <button class="modal-delete-btn" id="modalDeleteBtn">캐릭터 삭제</button>
+      </div>
     `;
 
     const imageWrap = document.getElementById('modalImageWrap');
@@ -388,6 +401,7 @@
       img.className = 'modal-image';
       img.src = profileImg;
       img.alt = c.name;
+      protectImage(img);
       img.onerror = () => {
         imageWrap.innerHTML = `<div class="modal-image-placeholder">${PERSON_ICON}</div>`;
       };
@@ -400,6 +414,9 @@
     document.getElementById('modalEditBtn').addEventListener('click', () => {
       closeModal();
       openEditForm(c, world, groupField ? fieldValue(c, groupField.key) : null);
+    });
+    document.getElementById('modalDeleteBtn').addEventListener('click', () => {
+      deleteCharacter(c);
     });
 
     modalOverlay.classList.add('is-open');
@@ -691,8 +708,9 @@
     });
   }
 
+  // worlds.json의 sha는 절대 오래 캐싱하지 않는다 — 다른 탭이나 깃허브 웹에서 직접
+  // 파일을 바꿨을 수도 있으므로, 저장 직전에 항상 최신 sha를 다시 물어본다.
   async function getWorldsSha() {
-    if (worldsSha) return worldsSha;
     const res = await fetch(
       `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${WORLDS_PATH}?ref=${GITHUB_BRANCH}`,
       { headers: { Accept: 'application/vnd.github+json' } }
@@ -710,13 +728,27 @@
       window.alert('세계관/항목 구조를 저장하려면 먼저 "⚙ 저장 설정"에서 토큰을 등록해주세요.');
       return false;
     }
+    const content = b64EncodeUnicode(JSON.stringify(worlds, null, 2));
     try {
       const sha = await getWorldsSha();
-      const content = b64EncodeUnicode(JSON.stringify(worlds, null, 2));
       const result = await githubPutFile(WORLDS_PATH, content, 'Update worlds.json (field template)', sha);
       worldsSha = result.content ? result.content.sha : worldsSha;
       return true;
     } catch (err) {
+      // sha 충돌(다른 곳에서 방금 파일이 바뀐 경우)이면, 최신 sha로 한 번만 자동으로 다시 시도한다.
+      const isShaConflict = /sha|does not match|expected/i.test(err.message || '');
+      if (isShaConflict) {
+        try {
+          const freshSha = await getWorldsSha();
+          const result = await githubPutFile(WORLDS_PATH, content, 'Update worlds.json (field template)', freshSha);
+          worldsSha = result.content ? result.content.sha : worldsSha;
+          return true;
+        } catch (retryErr) {
+          console.error(retryErr);
+          window.alert('세계관 저장에 실패했어요: ' + retryErr.message);
+          return false;
+        }
+      }
       console.error(err);
       window.alert('세계관 저장에 실패했어요: ' + err.message);
       return false;
@@ -1000,6 +1032,24 @@
     });
   }
 
+  // 해당 경로에 이미 파일이 있으면 그 sha를 가져온다(깃허브는 기존 파일을 덮어쓸 때 sha가 꼭 필요함).
+  // 없으면(새 파일이면) undefined를 반환한다.
+  async function getFileSha(path) {
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}?ref=${GITHUB_BRANCH}`,
+        { headers: { Accept: 'application/vnd.github+json' } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        return data.sha;
+      }
+    } catch (err) {
+      // 조회 실패는 "새 파일"로 간주하고 넘어간다.
+    }
+    return undefined;
+  }
+
   async function githubPutFile(path, base64Content, message, sha) {
     const token = getToken();
     if (!token) throw new Error('NO_TOKEN');
@@ -1013,6 +1063,53 @@
       throw new Error(errBody.message || `GitHub 저장 실패 (${res.status})`);
     }
     return res.json();
+  }
+
+  async function githubDeleteFile(path, message) {
+    const token = getToken();
+    if (!token) throw new Error('NO_TOKEN');
+    const sha = await getFileSha(path);
+    if (!sha) return; // 이미 없는 파일이면 조용히 넘어간다.
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
+      body: JSON.stringify({ message, sha, branch: GITHUB_BRANCH }),
+    });
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(errBody.message || `GitHub 삭제 실패 (${res.status})`);
+    }
+    return res.json();
+  }
+
+  async function deleteCharacter(c) {
+    if (!window.confirm(`"${c.name}" 캐릭터를 정말 삭제할까요?\n이 작업은 되돌릴 수 없어요.`)) return;
+
+    if (!getToken()) {
+      const t = window.prompt(
+        '삭제하려면 먼저 깃허브 개인 토큰(Contents: Read and write 권한)을 붙여넣어주세요.'
+      );
+      if (!t) return;
+      setToken(t.trim());
+    }
+
+    try {
+      await githubDeleteFile(c._path, `Delete character: ${c.name}`);
+      // 이미지 파일도 함께 정리한다(실패해도 캐릭터 삭제 자체는 이미 끝난 상태라 무시하고 진행).
+      if (c.image) {
+        try { await githubDeleteFile(c.image, `Delete image for ${c.name}`); } catch (e) { console.warn(e); }
+      }
+      if (c.profileImage) {
+        try { await githubDeleteFile(c.profileImage, `Delete profile image for ${c.name}`); } catch (e) { console.warn(e); }
+      }
+      characters = characters.filter((x) => x._path !== c._path);
+      closeModal();
+      renderSidebar();
+      renderGallery();
+    } catch (err) {
+      console.error(err);
+      window.alert('삭제에 실패했어요: ' + err.message);
+    }
   }
 
   async function submitForm(isEdit, existing, world) {
@@ -1077,7 +1174,8 @@
         const ext = imageFile.name.split('.').pop();
         const imagePath = `${ASSETS_DIR}/${obj.id}.${ext}`;
         const base64 = await fileToBase64(imageFile);
-        await githubPutFile(imagePath, base64, `Add image for ${name}`);
+        const existingImageSha = await getFileSha(imagePath);
+        await githubPutFile(imagePath, base64, `Add image for ${name}`, existingImageSha);
         obj.image = imagePath;
       }
       const profileImageFile = document.getElementById('fProfileImage').files[0];
@@ -1085,7 +1183,8 @@
         const ext = profileImageFile.name.split('.').pop();
         const imagePath = `${ASSETS_DIR}/${obj.id}-profile.${ext}`;
         const base64 = await fileToBase64(profileImageFile);
-        await githubPutFile(imagePath, base64, `Add profile image for ${name}`);
+        const existingProfileSha = await getFileSha(imagePath);
+        await githubPutFile(imagePath, base64, `Add profile image for ${name}`, existingProfileSha);
         obj.profileImage = imagePath;
       }
 
