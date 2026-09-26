@@ -799,3 +799,23 @@ body {
   cursor: pointer;
   white-space: nowrap;
 }
+
+.field-category-roles {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.field-category-role-chk {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--sub-text);
+  cursor: pointer;
+}
+
+.field-category-role-chk input {
+  margin: 0;
+}
