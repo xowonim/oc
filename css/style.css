@@ -416,6 +416,35 @@ body {
   border-color: #999;
 }
 
+.modal-delete-row {
+  text-align: right;
+  margin-top: 8px;
+}
+
+.modal-delete-btn {
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--sub-text);
+  cursor: pointer;
+  padding: 4px 2px;
+}
+
+.modal-delete-btn:hover {
+  color: #d9534f;
+}
+
+/* 이미지 무단 저장(우클릭 저장, 길게 눌러 저장) 방지 */
+.no-save-image {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+  pointer-events: auto;
+}
+
 /* ---------- 생성/수정 폼 & 설정 ---------- */
 .form-title {
   font-size: 18px;
