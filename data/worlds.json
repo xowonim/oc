@@ -56,14 +56,14 @@
         "type": "textarea"
       },
       {
-        "key": "trivia",
-        "label": "여담",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790457842396",
         "label": "능력",
         "type": "text"
+      },
+      {
+        "key": "trivia",
+        "label": "여담",
+        "type": "textarea"
       }
     ]
   },
