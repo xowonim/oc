@@ -41,11 +41,6 @@
         "type": "text"
       },
       {
-        "key": "power",
-        "label": "능력",
-        "type": "tags"
-      },
-      {
         "key": "bio",
         "label": "소개",
         "type": "textarea"
