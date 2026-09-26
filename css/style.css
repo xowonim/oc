@@ -742,6 +742,36 @@ body {
   margin-bottom: 8px;
 }
 
+.field-manager-move {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 14px;
+}
+
+.field-manager-move-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 6px;
+  width: 22px;
+  height: 20px;
+  line-height: 1;
+  font-size: 9px;
+  color: var(--sub-text);
+  cursor: pointer;
+  padding: 0;
+}
+
+.field-manager-move-btn:hover:not(:disabled) {
+  border-color: #999;
+  color: var(--text);
+}
+
+.field-manager-move-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 .field-manager-label {
   flex: 1;
   margin-bottom: 0;
