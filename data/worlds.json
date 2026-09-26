@@ -208,7 +208,8 @@
       {
         "key": "f_1790459041303",
         "label": "거주지",
-        "type": "category"
+        "type": "category",
+        "sidebarFilter": true
       }
     ]
   }
