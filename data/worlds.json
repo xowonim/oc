@@ -5,7 +5,13 @@
     "shortName": "神世界",
     "description": "신들의 세계관",
     "color": "#8f9dff",
-    "parts": ["1부", "2부", "3부", "4부", "5부"],
+    "parts": [
+      "1부",
+      "2부",
+      "3부",
+      "4부",
+      "5부"
+    ],
     "subcategories": [
       "오토리 일행",
       "음양오행의 신",
@@ -18,11 +24,27 @@
     "groupInGallery": true,
     "hasHistory": true,
     "fields": [
-      { "key": "name", "label": "이름", "type": "text", "core": true },
-      { "key": "age", "label": "나이", "type": "text" },
-      { "key": "affiliation", "label": "소속", "type": "text" },
-      { "key": "role", "label": "역할", "type": "text" },
-      { "key": "power", "label": "능력", "type": "tags" }
+      {
+        "key": "name",
+        "label": "이름",
+        "type": "text",
+        "core": true
+      },
+      {
+        "key": "age",
+        "label": "나이",
+        "type": "text"
+      },
+      {
+        "key": "role",
+        "label": "역할",
+        "type": "text"
+      },
+      {
+        "key": "power",
+        "label": "능력",
+        "type": "tags"
+      }
     ]
   },
   {
@@ -31,13 +53,34 @@
     "shortName": "OC",
     "description": "지역 기반 오리지널 캐릭터",
     "color": "#7fd8be",
-    "subcategories": ["요조라", "미조레", "시노노메"],
+    "subcategories": [
+      "요조라",
+      "미조레",
+      "시노노메"
+    ],
     "useGradeClass": true,
     "fields": [
-      { "key": "name", "label": "이름", "type": "text", "core": true },
-      { "key": "age", "label": "나이", "type": "text" },
-      { "key": "affiliation", "label": "소속", "type": "text" },
-      { "key": "role", "label": "역할", "type": "text" }
+      {
+        "key": "name",
+        "label": "이름",
+        "type": "text",
+        "core": true
+      },
+      {
+        "key": "age",
+        "label": "나이",
+        "type": "text"
+      },
+      {
+        "key": "affiliation",
+        "label": "소속",
+        "type": "text"
+      },
+      {
+        "key": "role",
+        "label": "역할",
+        "type": "text"
+      }
     ]
   },
   {
@@ -48,11 +91,32 @@
     "color": "#ff8fab",
     "useGradeClass": true,
     "fields": [
-      { "key": "name", "label": "이름", "type": "text", "core": true },
-      { "key": "age", "label": "나이", "type": "text" },
-      { "key": "affiliation", "label": "소속", "type": "text" },
-      { "key": "position", "label": "포지션", "type": "text" },
-      { "key": "color", "label": "담당 컬러", "type": "text" }
+      {
+        "key": "name",
+        "label": "이름",
+        "type": "text",
+        "core": true
+      },
+      {
+        "key": "age",
+        "label": "나이",
+        "type": "text"
+      },
+      {
+        "key": "affiliation",
+        "label": "소속",
+        "type": "text"
+      },
+      {
+        "key": "position",
+        "label": "포지션",
+        "type": "text"
+      },
+      {
+        "key": "color",
+        "label": "담당 컬러",
+        "type": "text"
+      }
     ]
   },
   {
@@ -62,15 +126,40 @@
     "description": "그 외 캐릭터",
     "color": "#ffb26b",
     "fixedOrderList": [
-      "리리", "유희", "도운", "소선",
-      "반숙", "완숙", "선우", "영모", "탄숙",
-      "리율", "티아"
+      "리리",
+      "유희",
+      "도운",
+      "소선",
+      "반숙",
+      "완숙",
+      "선우",
+      "영모",
+      "탄숙",
+      "리율",
+      "티아"
     ],
     "fields": [
-      { "key": "name", "label": "이름", "type": "text", "core": true },
-      { "key": "age", "label": "나이", "type": "text" },
-      { "key": "affiliation", "label": "소속", "type": "text" },
-      { "key": "role", "label": "역할", "type": "text" }
+      {
+        "key": "name",
+        "label": "이름",
+        "type": "text",
+        "core": true
+      },
+      {
+        "key": "age",
+        "label": "나이",
+        "type": "text"
+      },
+      {
+        "key": "affiliation",
+        "label": "소속",
+        "type": "text"
+      },
+      {
+        "key": "role",
+        "label": "역할",
+        "type": "text"
+      }
     ]
   }
 ]
