@@ -142,10 +142,21 @@
 
   // 캐릭터 데이터에서 실제로 쓰이고 있는 값만 뽑아 하위 분류 목록을 만든다.
   // (미리 정해둔 목록이 아니라, 그 값을 쓰는 캐릭터가 하나라도 생겨야 나타난다)
+  // 한 캐릭터가 여러 값을 동시에 가질 수도 있으므로(예: 1부~5부 내내 등장) 배열/단일값을 모두 처리한다.
+  function fieldValuesAsList(v) {
+    if (Array.isArray(v)) return v.filter(Boolean);
+    return v ? [v] : [];
+  }
+
+  function fieldMatches(v, target) {
+    return Array.isArray(v) ? v.includes(target) : v === target;
+  }
+
   function distinctFieldValues(worldId, key) {
-    const values = characters
-      .filter((c) => c.world === worldId && fieldValue(c, key))
-      .map((c) => fieldValue(c, key));
+    const values = [];
+    characters
+      .filter((c) => c.world === worldId)
+      .forEach((c) => fieldValuesAsList(fieldValue(c, key)).forEach((v) => values.push(v)));
     return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
   }
 
@@ -156,7 +167,7 @@
       const world = worldById(activeWorld);
       const field = sidebarCategoryField(world);
       if (activeSubFilter && field) {
-        list = list.filter((c) => fieldValue(c, field.key) === activeSubFilter);
+        list = list.filter((c) => fieldMatches(fieldValue(c, field.key), activeSubFilter));
       }
     }
     return list;
@@ -253,11 +264,12 @@
   function renderGroupedGallery(list, world, groupField) {
     // 미리 정해둔 목록이 아니라, 지금 이 세계관에 실제로 존재하는 캐릭터들의
     // 값만 모아서(자모/숫자 순 정렬) 구역을 만든다.
-    const known = list.filter((c) => fieldValue(c, groupField.key)).map((c) => fieldValue(c, groupField.key));
+    const known = [];
+    list.forEach((c) => fieldValuesAsList(fieldValue(c, groupField.key)).forEach((v) => known.push(v)));
     const groupNames = Array.from(new Set(known)).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
 
     groupNames.forEach((groupName) => {
-      const items = list.filter((c) => fieldValue(c, groupField.key) === groupName).sort(nameCompare);
+      const items = list.filter((c) => fieldMatches(fieldValue(c, groupField.key), groupName)).sort(nameCompare);
       const section = document.createElement('section');
       section.className = 'gallery-section';
       const header = document.createElement('h2');
@@ -271,7 +283,7 @@
       galleryEl.appendChild(section);
     });
 
-    const others = list.filter((c) => !fieldValue(c, groupField.key)).sort(nameCompare);
+    const others = list.filter((c) => fieldValuesAsList(fieldValue(c, groupField.key)).length === 0).sort(nameCompare);
     if (others.length > 0) {
       const section = document.createElement('section');
       section.className = 'gallery-section';
@@ -337,7 +349,7 @@
     const shortFields = world && world.fields ? world.fields.filter((f) => f.key !== 'name' && f.type !== 'textarea') : [];
     shortFields.forEach((f) => {
       const raw = fieldValue(c, f.key);
-      const val = f.type === 'tags' ? renderTagPills(raw) : raw || '-';
+      const val = f.type === 'tags' || Array.isArray(raw) ? renderTagPills(raw) : raw || '-';
       rows.push([f.label, val]);
     });
 
@@ -570,6 +582,30 @@
         ta.setAttribute('data-field-key', f.key);
         ta.value = rawVal || '';
         label.appendChild(ta);
+      } else if (f.type === 'category' && f.multi) {
+        const tagContainer = document.createElement('div');
+        label.appendChild(tagContainer);
+        const initial = Array.isArray(rawVal) ? rawVal : rawVal ? [rawVal] : [];
+        currentFieldWidgets[f.key] = mountTagInput(tagContainer, initial);
+
+        const roleRow = document.createElement('div');
+        roleRow.className = 'field-category-roles';
+        const sideChk = document.createElement('label');
+        sideChk.className = 'field-category-role-chk';
+        sideChk.innerHTML = `<input type="checkbox" ${f.sidebarFilter ? 'checked' : ''}> 사이드바 필터로 쓰기`;
+        sideChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'sidebarFilter', e.target.checked));
+        const galChk = document.createElement('label');
+        galChk.className = 'field-category-role-chk';
+        galChk.innerHTML = `<input type="checkbox" ${f.galleryGroup ? 'checked' : ''}> 갤러리 구역으로 묶기`;
+        galChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'galleryGroup', e.target.checked));
+        const multiChk = document.createElement('label');
+        multiChk.className = 'field-category-role-chk';
+        multiChk.innerHTML = `<input type="checkbox" checked> 여러 개 선택 가능 (예: 1부~5부에 걸쳐 등장)`;
+        multiChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'multi', e.target.checked));
+        roleRow.appendChild(sideChk);
+        roleRow.appendChild(galChk);
+        roleRow.appendChild(multiChk);
+        label.appendChild(roleRow);
       } else if (f.type === 'category') {
         const datalistId = 'dl_' + f.key;
         const suggestions = distinctFieldValues(w.id, f.key);
@@ -596,8 +632,13 @@
         galChk.className = 'field-category-role-chk';
         galChk.innerHTML = `<input type="checkbox" ${f.galleryGroup ? 'checked' : ''}> 갤러리 구역으로 묶기`;
         galChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'galleryGroup', e.target.checked));
+        const multiChk = document.createElement('label');
+        multiChk.className = 'field-category-role-chk';
+        multiChk.innerHTML = `<input type="checkbox"> 여러 개 선택 가능 (예: 1부~5부에 걸쳐 등장)`;
+        multiChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'multi', e.target.checked));
         roleRow.appendChild(sideChk);
         roleRow.appendChild(galChk);
+        roleRow.appendChild(multiChk);
         label.appendChild(roleRow);
       } else {
         const valInput = document.createElement('input');
@@ -695,7 +736,7 @@
     }
     (world.fields || []).forEach((f) => {
       if (f.key === 'name') return;
-      if (f.type === 'tags') {
+      if (f.type === 'tags' || (f.type === 'category' && f.multi)) {
         snap.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
       } else if (f.type === 'textarea') {
         const ta = document.querySelector(`textarea[data-field-key="${f.key}"]`);
@@ -752,10 +793,16 @@
   async function toggleFieldRole(world, key, roleKey, checked) {
     const f = (world.fields || []).find((f) => f.key === key);
     if (!f) return;
+    // multi(여러 개 선택) 전환은 입력 위젯 자체가 바뀌므로 미리 값을 스냅샷해둔다.
+    const snap = roleKey === 'multi' ? snapshotFormValues(world) : null;
     const prev = f[roleKey];
     f[roleKey] = checked;
     const ok = await saveWorlds();
-    if (!ok) f[roleKey] = prev;
+    if (!ok) {
+      f[roleKey] = prev;
+      return;
+    }
+    if (snap) renderDynamicSection(world, snap, null);
   }
 
   // ---- 템플릿(세계관) 자체 생성/삭제 ----
@@ -926,8 +973,10 @@
       .filter((f) => f.key !== 'name')
       .forEach((f) => {
         if (obj.fields[f.key] !== undefined) return;
-        if (f.type === 'tags') obj.fields[f.key] = [];
-        else if (f.type === 'category') obj.fields[f.key] = presetSubcategory || '';
+        if (f.type === 'tags' || (f.type === 'category' && f.multi)) {
+          obj.fields[f.key] = presetSubcategory ? [presetSubcategory] : [];
+        } else if (f.type === 'category') obj.fields[f.key] = presetSubcategory || '';
+        else if (f.type === 'textarea') obj.fields[f.key] = '';
         else obj.fields[f.key] = '-';
       });
 
@@ -1004,11 +1053,14 @@
     obj.fields = {};
     (world.fields || []).forEach((f) => {
       if (f.key === 'name') return; // 이름은 obj.name(최상위)에 이미 저장됨
-      if (f.type === 'tags') {
+      if (f.type === 'tags' || (f.type === 'category' && f.multi)) {
         obj.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
       } else if (f.type === 'textarea') {
         const ta = document.querySelector(`textarea[data-field-key="${f.key}"]`);
         obj.fields[f.key] = ta ? ta.value.trim() : '';
+      } else if (f.type === 'category') {
+        const input = document.querySelector(`[data-field-key="${f.key}"]`);
+        obj.fields[f.key] = input ? input.value.trim() : '';
       } else {
         const input = document.querySelector(`[data-field-key="${f.key}"]`);
         obj.fields[f.key] = input ? input.value.trim() || '-' : '-';
