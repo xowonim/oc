@@ -126,9 +126,18 @@
 
   function subFilterField(world) {
     if (!world) return null;
-    if (world.parts) return 'part';
-    if (world.subcategories) return 'subcategory';
+    if (world.hasPart) return 'part';
+    if (world.hasSubcategory) return 'subcategory';
     return null;
+  }
+
+  // 캐릭터 데이터에서 실제로 쓰이고 있는 값만 뽑아 하위 분류 목록을 만든다.
+  // (미리 정해둔 목록이 아니라, 그 값을 쓰는 캐릭터가 하나라도 생겨야 나타난다)
+  function distinctFieldValues(worldId, field) {
+    const values = characters
+      .filter((c) => c.world === worldId && c[field])
+      .map((c) => c[field]);
+    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
   }
 
   function getFiltered() {
@@ -164,8 +173,9 @@
       });
       item.appendChild(btn);
 
-      const subSource = entry.parts || entry.subcategories;
-      if (subSource && activeWorld === entry.id) {
+      const subField = subFilterField(entry);
+      const subSource = subField ? distinctFieldValues(entry.id, subField) : null;
+      if (subSource && subSource.length > 0 && activeWorld === entry.id) {
         const subList = document.createElement('ul');
         subList.className = 'sub-list';
 
@@ -231,7 +241,12 @@
   }
 
   function renderGroupedGallery(list, world) {
-    world.subcategories.forEach((subName) => {
+    // 미리 정해둔 목록이 아니라, 지금 이 세계관에 실제로 존재하는 캐릭터들의
+    // 세부 분류 값만 모아서(자모/숫자 순 정렬) 구역을 만든다.
+    const known = list.filter((c) => c.subcategory).map((c) => c.subcategory);
+    const subNames = Array.from(new Set(known)).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
+
+    subNames.forEach((subName) => {
       const items = list.filter((c) => c.subcategory === subName).sort(nameCompare);
       const section = document.createElement('section');
       section.className = 'gallery-section';
@@ -246,14 +261,13 @@
       galleryEl.appendChild(section);
     });
 
-    const known = new Set(world.subcategories);
-    const others = list.filter((c) => !known.has(c.subcategory)).sort(nameCompare);
+    const others = list.filter((c) => !c.subcategory).sort(nameCompare);
     if (others.length > 0) {
       const section = document.createElement('section');
       section.className = 'gallery-section';
       const header = document.createElement('h2');
       header.className = 'gallery-section-title';
-      header.textContent = '기타';
+      header.textContent = '미분류';
       section.appendChild(header);
       const row = document.createElement('div');
       row.className = 'card-row';
@@ -305,7 +319,7 @@
     const worldColor = world ? world.color : '#999';
 
     const rows = [];
-    if (world && world.parts && c.part) rows.push(['분류', c.part]);
+    if (world && world.hasPart && c.part) rows.push(['분류', c.part]);
     if (c.subcategory) rows.push(['세부 분류', c.subcategory]);
     if (world && world.useGradeClass) {
       rows.push(['학년', c.grade ?? '-']);
@@ -460,58 +474,19 @@
 
   let currentFieldWidgets = {};
 
-  // ---- 부/세부 분류처럼 "목록" 형태인 항목의 추가·삭제 관리 ----
-  function renderManagedList(container, w, arrKey, labelText, selectId, currentValue) {
-    const wrap = document.createElement('div');
-    wrap.className = 'managed-list-field';
-
-    const selectLabel = document.createElement('label');
-    selectLabel.className = 'form-label';
-    selectLabel.innerHTML = `${labelText}
-      <select class="form-input" id="${selectId}">
-        ${(w[arrKey] || []).map((v) => `<option value="${escapeAttr(v)}" ${v === currentValue ? 'selected' : ''}>${v}</option>`).join('')}
-      </select>`;
-    wrap.appendChild(selectLabel);
-
-    const pillRow = document.createElement('div');
-    pillRow.className = 'managed-list-pills';
-    (w[arrKey] || []).forEach((v) => {
-      const pill = document.createElement('span');
-      pill.className = 'managed-list-pill';
-      pill.innerHTML = `${v} <button type="button" class="managed-list-pill-del">×</button>`;
-      pill.querySelector('button').addEventListener('click', () => removeListEntry(w, arrKey, v));
-      pillRow.appendChild(pill);
-    });
-    wrap.appendChild(pillRow);
-
-    const addWrap = document.createElement('div');
-    addWrap.className = 'managed-list-add';
-    addWrap.innerHTML = `<input type="text" class="form-input" placeholder="새 항목 추가">
-      <button type="button" class="managed-list-add-btn">+ 추가</button>`;
-    addWrap.querySelector('button').addEventListener('click', () => {
-      const input = addWrap.querySelector('input');
-      const v = input.value.trim();
-      if (!v) return;
-      addListEntry(w, arrKey, v);
-    });
-    wrap.appendChild(addWrap);
-
+  // ---- 부/세부 분류: 미리 정해둔 목록이 아니라 자유롭게 타이핑.
+  // (같은 세계관의 기존 캐릭터들이 썼던 값은 자동완성으로만 제안)
+  function renderFreeCategoryInput(container, w, field, labelText, inputId, currentValue) {
+    const wrap = document.createElement('label');
+    wrap.className = 'form-label';
+    const datalistId = inputId + 'List';
+    const suggestions = distinctFieldValues(w.id, field);
+    wrap.innerHTML = `${labelText}
+      <input type="text" class="form-input" id="${inputId}" list="${datalistId}" value="${escapeAttr(currentValue || '')}" placeholder="예: ${field === 'part' ? '1부' : '오토리 일행'}">
+      <datalist id="${datalistId}">
+        ${suggestions.map((v) => `<option value="${escapeAttr(v)}">`).join('')}
+      </datalist>`;
     container.appendChild(wrap);
-  }
-
-  async function addListEntry(world, arrKey, value) {
-    world[arrKey] = world[arrKey] || [];
-    if (world[arrKey].includes(value)) return;
-    world[arrKey].push(value);
-    const ok = await saveWorlds();
-    if (ok) renderDynamicSection(world, null, null);
-  }
-
-  async function removeListEntry(world, arrKey, value) {
-    if (!window.confirm(`"${value}" 항목을 삭제할까요?`)) return;
-    world[arrKey] = (world[arrKey] || []).filter((v) => v !== value);
-    const ok = await saveWorlds();
-    if (ok) renderDynamicSection(world, null, null);
   }
 
   function renderDynamicSection(w, existing, presetSubcategory) {
@@ -519,12 +494,12 @@
     container.innerHTML = '';
     currentFieldWidgets = {};
 
-    if (w.parts) {
-      renderManagedList(container, w, 'parts', '분류(부)', 'fPart', (existing && existing.part) || presetSubcategory);
+    if (w.hasPart) {
+      renderFreeCategoryInput(container, w, 'part', '분류(부)', 'fPart', (existing && existing.part) || presetSubcategory);
     }
 
-    if (w.subcategories) {
-      renderManagedList(container, w, 'subcategories', '세부 분류', 'fSubcategory', existing ? existing.subcategory : presetSubcategory);
+    if (w.hasSubcategory) {
+      renderFreeCategoryInput(container, w, 'subcategory', '세부 분류', 'fSubcategory', existing ? existing.subcategory : presetSubcategory);
     }
 
     if (w.useGradeClass) {
@@ -859,8 +834,8 @@
     const obj = existing ? { ...existing } : { id: 'character-id', world: world.id, name: '캐릭터 이름', image: null };
     delete obj._path;
     delete obj._sha;
-    if (world.parts) obj.part = obj.part || world.parts[0];
-    if (world.subcategories) obj.subcategory = obj.subcategory || presetSubcategory || world.subcategories[0];
+    if (world.hasPart) obj.part = obj.part || presetSubcategory || '';
+    if (world.hasSubcategory) obj.subcategory = obj.subcategory || presetSubcategory || '';
     if (world.useGradeClass) {
       obj.grade = obj.grade ?? null;
       obj.class = obj.class ?? null;
