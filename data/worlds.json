@@ -134,11 +134,6 @@
         "type": "text"
       },
       {
-        "key": "bio",
-        "label": "소개",
-        "type": "textarea"
-      },
-      {
         "key": "trivia",
         "label": "여담",
         "type": "textarea"
