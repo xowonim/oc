@@ -221,15 +221,15 @@
         "type": "text"
       },
       {
+        "key": "f_1790485416027",
+        "label": "신체",
+        "type": "text"
+      },
+      {
         "key": "f_1790460191966",
         "label": "학년",
         "type": "category",
         "sidebarFilter": true
-      },
-      {
-        "key": "f_1790485416027",
-        "label": "신체",
-        "type": "text"
       },
       {
         "key": "f_1790477497994",
