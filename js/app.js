@@ -27,6 +27,8 @@
   let characters = [];
   let activeWorld = 'all';
   let activeSubFilter = null;
+  let charactersLoadFailed = false;
+  let charactersLoadError = '';
 
   function getToken() {
     return localStorage.getItem(TOKEN_KEY) || '';
@@ -51,9 +53,18 @@
 
   async function loadCharacters() {
     const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${CHARACTERS_DIR}?ref=${GITHUB_BRANCH}`;
+    // 목록을 불러올 때도 토큰이 있으면 같이 보낸다. 인증 없이 GitHub API를 부르면 시간당
+    // 요청 한도가 훨씬 낮아서(60회/시간), 새로고침을 자주 하면 쉽게 한도를 넘겨 "목록을
+    // 못 가져오는" 상태가 되고, 그걸 아무 표시 없이 빈 목록으로 보여주고 있었다.
+    const token = getToken();
+    const headers = { Accept: 'application/vnd.github+json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
     try {
-      const listRes = await fetch(apiUrl, { headers: { Accept: 'application/vnd.github+json' } });
-      if (!listRes.ok) throw new Error('GitHub API 응답 오류: ' + listRes.status);
+      const listRes = await fetch(apiUrl, { headers });
+      if (!listRes.ok) {
+        const errBody = await listRes.json().catch(() => ({}));
+        throw new Error(errBody.message || `GitHub API 응답 오류 (${listRes.status})`);
+      }
       const entries = await listRes.json();
       if (!Array.isArray(entries)) throw new Error('폴더 목록 형식 오류');
 
@@ -75,9 +86,13 @@
           }
         })
       );
+      charactersLoadFailed = false;
+      charactersLoadError = '';
       return results.filter(Boolean);
     } catch (err) {
       console.warn('GitHub API로 캐릭터 목록을 불러오지 못했어요. 로컬 데이터로 대체합니다.', err);
+      charactersLoadFailed = true;
+      charactersLoadError = err.message || String(err);
       try {
         const res = await fetch('data/characters.fallback.json');
         if (!res.ok) return [];
@@ -237,6 +252,17 @@
   // ---------- 갤러리 ----------
   function renderGallery() {
     galleryEl.innerHTML = '';
+
+    // 캐릭터 목록 자체를 못 불러온 상태라면, "아직 등록된 캐릭터가 없어요"처럼
+    // 실제로 비어있는 것과 헷갈릴 수 있는 문구 대신 진짜 원인을 보여준다.
+    if (charactersLoadFailed) {
+      const warn = document.createElement('p');
+      warn.className = 'empty-msg';
+      warn.textContent = `캐릭터 목록을 불러오지 못했어요 (${charactersLoadError || '알 수 없는 오류'}). 잠시 후 새로고침해주세요.`;
+      galleryEl.appendChild(warn);
+      return;
+    }
+
     const world = activeWorld === 'all' ? null : worldById(activeWorld);
     const filtered = getFiltered();
     const groupField = world ? galleryCategoryField(world) : null;
