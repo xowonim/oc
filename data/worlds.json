@@ -109,13 +109,13 @@
         "core": true
       },
       {
-        "key": "age",
-        "label": "나이",
+        "key": "f_1790516064876",
+        "label": "영어 이름",
         "type": "text"
       },
       {
-        "key": "f_1790516064876",
-        "label": "영어 이름",
+        "key": "age",
+        "label": "나이",
         "type": "text"
       },
       {
