@@ -61,14 +61,14 @@
         "type": "textarea"
       },
       {
-        "key": "personality",
-        "label": "성격",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790485524353",
         "label": "성별",
         "type": "text"
+      },
+      {
+        "key": "personality",
+        "label": "성격",
+        "type": "textarea"
       },
       {
         "key": "trivia",
