@@ -125,7 +125,7 @@
       },
       {
         "key": "role",
-        "label": "역할",
+        "label": "직업",
         "type": "text"
       },
       {
