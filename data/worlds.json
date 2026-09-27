@@ -46,14 +46,14 @@
         "type": "text"
       },
       {
-        "key": "role",
-        "label": "종족",
-        "type": "text"
-      },
-      {
         "key": "f_1790492015318",
         "label": "주 오행",
         "type": "tags"
+      },
+      {
+        "key": "role",
+        "label": "종족",
+        "type": "text"
       },
       {
         "key": "f_1790458370300",
