@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>xowon's OC</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-<link rel="stylesheet" href="css/style.css?v=18">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+<link rel="stylesheet" href="css/style.css?v=19">
 </head>
 <body>
   <div class="layout">
@@ -47,6 +48,29 @@
     </div>
   </div>
 
-  <script src="js/app.js?v=18"></script>
+  <!-- 이미지 자르기 모달 -->
+  <div class="modal-overlay" id="cropOverlay">
+    <div class="modal-card crop-card" id="cropCard">
+      <button class="modal-close" id="cropClose" aria-label="닫기">&times;</button>
+      <div class="modal-body">
+        <h2 class="form-title">이미지 확대/자르기</h2>
+        <p class="form-hint">마우스 휠(또는 손가락으로 확대/축소)로 확대하고, 드래그해서 원하는 부분을 맞춘 다음 적용해주세요.</p>
+        <div class="crop-container">
+          <img id="cropImage" alt="자를 이미지">
+        </div>
+        <div class="crop-controls">
+          <button type="button" class="template-mini-btn" id="cropZoomIn">확대 +</button>
+          <button type="button" class="template-mini-btn" id="cropZoomOut">축소 -</button>
+          <button type="button" class="template-mini-btn" id="cropRotate">회전</button>
+          <button type="button" class="template-mini-btn" id="cropReset">초기화</button>
+        </div>
+        <button class="form-submit" id="cropApply">이대로 적용하기</button>
+        <button class="form-submit form-submit-secondary" id="cropSkip">자르지 않고 원본 그대로</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+  <script src="js/app.js?v=19"></script>
 </body>
 </html>
