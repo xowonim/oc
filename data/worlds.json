@@ -226,6 +226,11 @@
         "label": "학급",
         "type": "category",
         "galleryGroup": true
+      },
+      {
+        "key": "f_1790484073611",
+        "label": "소속",
+        "type": "tags"
       }
     ]
   }
