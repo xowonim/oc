@@ -115,7 +115,7 @@
       },
       {
         "key": "age",
-        "label": "나이",
+        "label": "성별",
         "type": "text"
       },
       {
