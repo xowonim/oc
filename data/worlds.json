@@ -119,13 +119,13 @@
         "type": "text"
       },
       {
-        "key": "role",
-        "label": "역할",
+        "key": "f_1790516064876",
+        "label": "영어 이름",
         "type": "text"
       },
       {
-        "key": "f_1790516064876",
-        "label": "영어 이름",
+        "key": "role",
+        "label": "역할",
         "type": "text"
       },
       {
