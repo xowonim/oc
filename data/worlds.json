@@ -124,13 +124,13 @@
         "type": "tags"
       },
       {
-        "key": "role",
-        "label": "직업",
+        "key": "f_1790516225650",
+        "label": "거주지",
         "type": "text"
       },
       {
-        "key": "f_1790516225650",
-        "label": "거주지",
+        "key": "role",
+        "label": "직업",
         "type": "text"
       },
       {
