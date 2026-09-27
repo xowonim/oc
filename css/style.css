@@ -1038,9 +1038,9 @@ body {
 
 /* ---------- 엔트리 목록(이미지+이름+설명) ---------- */
 .modal-entry-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
   margin-top: 10px;
 }
 
@@ -1048,6 +1048,7 @@ body {
   display: flex;
   gap: 12px;
   align-items: flex-start;
+  min-width: 0;
 }
 
 .modal-entry-image-wrap {
