@@ -370,14 +370,16 @@ body {
 .modal-fields {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+  margin-top: 26px;
 }
 
 .modal-field-row {
   display: flex;
+  align-items: baseline;
   font-size: 14px;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 8px;
+  padding-bottom: 10px;
 }
 
 .modal-field-label {
@@ -388,12 +390,14 @@ body {
 
 .modal-field-value {
   flex: 1;
+  line-height: 1.5;
 }
 
 .modal-bio {
-  margin-top: 18px;
+  margin-top: 10px;
+  margin-bottom: 6px;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.7;
   color: #444;
   white-space: pre-line;
 }
@@ -698,7 +702,7 @@ body {
 .modal-section-title {
   font-size: 13px;
   font-weight: 700;
-  margin: 18px 0 4px;
+  margin: 26px 0 6px;
   color: var(--text);
 }
 
@@ -881,7 +885,7 @@ body {
 
 /* ---------- 접은 글(펼치기/접기) ---------- */
 .modal-collapse {
-  margin: 16px 0 4px;
+  margin: 24px 0 8px;
   border-top: 1px solid var(--border);
   padding-top: 12px;
 }
@@ -915,7 +919,7 @@ body {
 
 /* ---------- 레이팅(별점) ---------- */
 .modal-rating {
-  color: #e0a821;
+  color: var(--text);
   letter-spacing: 2px;
   font-size: 15px;
 }
@@ -931,7 +935,7 @@ body {
   background: none;
   font-size: 22px;
   line-height: 1;
-  color: #e0a821;
+  color: var(--text);
   cursor: pointer;
   padding: 2px;
 }
