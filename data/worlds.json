@@ -74,6 +74,11 @@
         "key": "trivia",
         "label": "여담",
         "type": "textarea"
+      },
+      {
+        "key": "f_1790492015318",
+        "label": "주 오행",
+        "type": "tags"
       }
     ]
   },
