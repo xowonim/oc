@@ -69,6 +69,11 @@
         "key": "trivia",
         "label": "여담",
         "type": "textarea"
+      },
+      {
+        "key": "f_1790485524353",
+        "label": "성별",
+        "type": "text"
       }
     ]
   },
