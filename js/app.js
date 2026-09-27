@@ -166,6 +166,75 @@
     return c.fields ? c.fields[key] : null;
   }
 
+  // 세계관 태그(캐릭터 이름 밑에 뜨는 알약 모양) 색상: 특정 세계관은 worlds.json에 저장된
+  // world.color 대신 이 값을 우선 쓴다. 목록에 없는 세계관(OC 등)은 기존 world.color 그대로.
+  const WORLD_TAG_COLOR_OVERRIDES = {
+    sinsekai: '#a3ccb2',
+    '神世界': '#a3ccb2',
+    YMKB: '#9786aa',
+  };
+  function worldTagColor(world) {
+    if (!world) return '#999';
+    return (
+      WORLD_TAG_COLOR_OVERRIDES[world.id] ||
+      WORLD_TAG_COLOR_OVERRIDES[world.name] ||
+      WORLD_TAG_COLOR_OVERRIDES[world.shortName] ||
+      world.color
+    );
+  }
+
+  // 오행 기호별 색(갤러리 카드에 배지로 표시할 때 배경/글자색)
+  const ELEMENT_COLORS = {
+    '木': { bg: '#3d7dd1', text: '#ffffff' },
+    '火': { bg: '#d64545', text: '#ffffff' },
+    '土': { bg: '#d9b400', text: '#3a2f00' },
+    '金': { bg: '#c7c7c7', text: '#333333' },
+    '水': { bg: '#736f64', text: '#ffffff' },
+    '?': { bg: '#9a9a9a', text: '#ffffff' },
+    '+': { bg: '#ffffff', text: '#333333', border: '#cccccc' },
+    '-': { bg: '#111111', text: '#ffffff' },
+  };
+
+  // 갤러리 카드 오른쪽에 보여줄 항목을 라벨 이름으로 찾는다(항목 키가 세계관마다 달라도,
+  // 라벨이 "소속"/"주 오행"인 항목을 그때그때 찾아서 쓰기 때문에 템플릿을 다시 만들어도 안 깨진다).
+  function findFieldByLabel(world, label) {
+    if (!world || !world.fields) return null;
+    return world.fields.find((f) => f.label === label) || null;
+  }
+
+  function isSinsekaiWorld(world) {
+    return !!world && (world.id === 'sinsekai' || world.name === '神世界');
+  }
+
+  function galleryAuxField(world) {
+    if (!world) return null;
+    return isSinsekaiWorld(world) ? findFieldByLabel(world, '주 오행') : findFieldByLabel(world, '소속');
+  }
+
+  // 카드 오른쪽에 보여줄 내용의 HTML을 만든다.
+  // - "All" 탭(world가 null)일 때는 그 캐릭터가 속한 세계관 이름을 보여준다.
+  // - 특정 세계관 탭일 때는 그 세계관의 "소속"(또는 神世界는 "주 오행") 항목 값을 보여준다.
+  function cardAuxHtml(c, world) {
+    if (!world) {
+      const cw = worldById(c.world);
+      if (!cw) return '';
+      return `<span class="char-card-aux">${cw.shortName || cw.name}</span>`;
+    }
+    const field = galleryAuxField(world);
+    if (!field) return '';
+    const raw = fieldValue(c, field.key);
+    if (isSinsekaiWorld(world)) {
+      const symbol = Array.isArray(raw) ? raw[0] : raw;
+      if (!symbol) return '';
+      const style = ELEMENT_COLORS[symbol] || { bg: '#9a9a9a', text: '#ffffff' };
+      const borderStyle = style.border ? `border:1px solid ${style.border};` : '';
+      return `<span class="char-card-element" style="background:${style.bg};color:${style.text};${borderStyle}">${symbol}</span>`;
+    }
+    const values = fieldValuesAsList(raw);
+    if (values.length === 0) return '';
+    return `<span class="char-card-aux">${values.join(', ')}</span>`;
+  }
+
   // 캐릭터 데이터에서 실제로 쓰이고 있는 값만 뽑아 하위 분류 목록을 만든다.
   // (미리 정해둔 목록이 아니라, 그 값을 쓰는 캐릭터가 하나라도 생겨야 나타난다)
   // 한 캐릭터가 여러 값을 동시에 가질 수도 있으므로(예: 1부~5부 내내 등장) 배열/단일값을 모두 처리한다.
@@ -294,7 +363,7 @@
     }
     const grid = document.createElement('div');
     grid.className = 'card-row';
-    list.forEach((c) => grid.appendChild(buildCard(c)));
+    list.forEach((c) => grid.appendChild(buildCard(c, world)));
     galleryEl.appendChild(grid);
   }
 
@@ -315,7 +384,7 @@
       section.appendChild(header);
       const row = document.createElement('div');
       row.className = 'card-row';
-      items.forEach((c) => row.appendChild(buildCard(c)));
+      items.forEach((c) => row.appendChild(buildCard(c, world)));
       section.appendChild(row);
       galleryEl.appendChild(section);
     });
@@ -330,7 +399,7 @@
       section.appendChild(header);
       const row = document.createElement('div');
       row.className = 'card-row';
-      others.forEach((c) => row.appendChild(buildCard(c)));
+      others.forEach((c) => row.appendChild(buildCard(c, world)));
       section.appendChild(row);
       galleryEl.appendChild(section);
     }
@@ -345,7 +414,7 @@
     img.addEventListener('dragstart', (e) => e.preventDefault());
   }
 
-  function buildCard(c) {
+  function buildCard(c, world) {
     const card = document.createElement('div');
     card.className = 'char-card';
     const imgWrap = document.createElement('div');
@@ -368,7 +437,7 @@
     card.appendChild(imgWrap);
     const info = document.createElement('div');
     info.className = 'char-card-info';
-    info.innerHTML = `<p class="char-card-name">${c.name}</p>`;
+    info.innerHTML = `<span class="char-card-name">${c.name}</span>${cardAuxHtml(c, world)}`;
     card.appendChild(info);
     card.addEventListener('click', () => openModal(c));
     return card;
@@ -385,7 +454,7 @@
   // ---------- 상세 모달 ----------
   function openModal(c) {
     const world = worldById(c.world);
-    const worldColor = world ? world.color : '#999';
+    const worldColor = worldTagColor(world);
 
     // 항목을 그녀가 정렬해둔 순서 그대로 위에서부터 배치한다(텍스트 항목 - 긴 글 - 텍스트 항목
     // 순서로 섞여 있어도 그 순서 그대로 보이도록, 짧은 항목들을 모았다가 긴 글/접은글 항목을
