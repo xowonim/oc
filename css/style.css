@@ -42,17 +42,18 @@ body {
 .logo-home {
   display: block;
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: #fff;
-  padding: 18px 12px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  padding: 4px 4px 18px;
   font-family: inherit;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--text);
+  text-align: left;
   cursor: pointer;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .nav-list {
@@ -946,8 +947,27 @@ body {
 }
 
 /* ---------- 레이팅(별점) ---------- */
+.modal-rating-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 20px;
+}
+
+.modal-rating-row {
+  display: flex;
+  align-items: baseline;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+
+.no-border {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
 .modal-rating {
-  color: var(--text);
+  color: var(--sub-text);
   letter-spacing: 2px;
   font-size: 15px;
 }
