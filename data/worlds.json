@@ -139,14 +139,14 @@
         "type": "textarea"
       },
       {
-        "key": "trivia",
-        "label": "여담",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790516225650",
         "label": "거주지",
         "type": "text"
+      },
+      {
+        "key": "trivia",
+        "label": "여담",
+        "type": "textarea"
       }
     ]
   },
