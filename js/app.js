@@ -387,36 +387,64 @@
     const world = worldById(c.world);
     const worldColor = world ? world.color : '#999';
 
-    const rows = [];
+    // 항목을 그녀가 정렬해둔 순서 그대로 위에서부터 배치한다(텍스트 항목 - 긴 글 - 텍스트 항목
+    // 순서로 섞여 있어도 그 순서 그대로 보이도록, 짧은 항목들을 모았다가 긴 글/접은글 항목을
+    // 만나면 그때까지 모은 걸 먼저 내보내고 이어서 긴 글/접은글을 넣는 식으로 처리한다).
+    let pendingRows = [];
     if (world && world.useGradeClass) {
-      rows.push(['학년', c.grade ?? '-']);
-      rows.push(['학급', c.class ?? '-']);
+      pendingRows.push(['학년', c.grade ?? '-']);
+      pendingRows.push(['학급', c.class ?? '-']);
     }
 
-    const shortFields = world && world.fields ? world.fields.filter((f) => f.key !== 'name' && f.type !== 'textarea') : [];
-    shortFields.forEach((f) => {
+    function rowsBlockHtml(rows) {
+      if (rows.length === 0) return '';
+      return `<div class="modal-fields">${rows
+        .map(
+          ([label, value]) => `
+            <div class="modal-field-row">
+              <div class="modal-field-label">${label}</div>
+              <div class="modal-field-value">${value}</div>
+            </div>
+          `
+        )
+        .join('')}</div>`;
+    }
+
+    const orderedFields = world && world.fields ? world.fields.filter((f) => f.key !== 'name') : [];
+    let sectionsHtml = '';
+    let collapseCounter = 0;
+
+    orderedFields.forEach((f) => {
       const raw = fieldValue(c, f.key);
-      const val = f.type === 'tags' || Array.isArray(raw) ? renderTagPills(raw) : raw || '-';
-      rows.push([f.label, val]);
-    });
-
-    const rowsHtml = rows
-      .map(
-        ([label, value]) => `
-          <div class="modal-field-row">
-            <div class="modal-field-label">${label}</div>
-            <div class="modal-field-value">${value}</div>
+      if (f.type === 'textarea') {
+        sectionsHtml += rowsBlockHtml(pendingRows);
+        pendingRows = [];
+        if (raw) {
+          sectionsHtml += `<h3 class="modal-section-title">${f.label}</h3><div class="modal-bio">${raw}</div>`;
+        }
+      } else if (f.type === 'collapse') {
+        sectionsHtml += rowsBlockHtml(pendingRows);
+        pendingRows = [];
+        collapseCounter += 1;
+        const cid = 'modalCollapse' + collapseCounter;
+        sectionsHtml += `
+          <div class="modal-collapse">
+            <button type="button" class="modal-collapse-toggle" data-target="${cid}">
+              <span>${f.label}</span><span class="modal-collapse-arrow">▾ 펼치기</span>
+            </button>
+            <div class="modal-collapse-body" id="${cid}" hidden>${raw || '-'}</div>
           </div>
-        `
-      )
-      .join('');
-
-    const longFields = world && world.fields ? world.fields.filter((f) => f.type === 'textarea') : [];
-    const extraSections = longFields
-      .map((f) => [f.label, fieldValue(c, f.key)])
-      .filter(([, v]) => v)
-      .map(([label, v]) => `<h3 class="modal-section-title">${label}</h3><p class="modal-bio">${v}</p>`)
-      .join('');
+        `;
+      } else if (f.type === 'rating') {
+        const n = Math.max(0, Math.min(5, Number(raw) || 0));
+        const stars = '★'.repeat(n) + '☆'.repeat(5 - n);
+        pendingRows.push([f.label, `<span class="modal-rating">${stars}</span>`]);
+      } else {
+        const val = f.type === 'tags' || Array.isArray(raw) ? renderTagPills(raw) : raw || '-';
+        pendingRows.push([f.label, val]);
+      }
+    });
+    sectionsHtml += rowsBlockHtml(pendingRows);
 
     const profileImg = c.profileImage || c.image;
 
@@ -424,13 +452,23 @@
       <div class="modal-image-wrap" id="modalImageWrap"></div>
       <p class="modal-name">${c.name}</p>
       <span class="modal-world-tag" style="background:${worldColor}">${world ? world.name : ''}</span>
-      <div class="modal-fields">${rowsHtml}</div>
-      ${extraSections}
+      ${sectionsHtml}
       <button class="modal-edit-btn" id="modalEditBtn">수정하기</button>
       <div class="modal-delete-row">
         <button class="modal-delete-btn" id="modalDeleteBtn">캐릭터 삭제</button>
       </div>
     `;
+
+    modalBody.querySelectorAll('.modal-collapse-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.getAttribute('data-target'));
+        const wasHidden = target.hasAttribute('hidden');
+        if (wasHidden) target.removeAttribute('hidden');
+        else target.setAttribute('hidden', '');
+        const arrow = btn.querySelector('.modal-collapse-arrow');
+        if (arrow) arrow.textContent = wasHidden ? '▴ 접기' : '▾ 펼치기';
+      });
+    });
 
     const imageWrap = document.getElementById('modalImageWrap');
     if (profileImg) {
@@ -537,11 +575,179 @@
     return { getValues: () => tags };
   }
 
+  // 별점 입력 위젯: 0~5점, 별을 클릭해서 점수를 정한다(같은 별을 다시 누르면 0점으로 초기화).
+  function mountRatingInput(container, initialValue) {
+    let value = Math.max(0, Math.min(5, Number(initialValue) || 0));
+    const wrap = document.createElement('div');
+    wrap.className = 'rating-input-wrap';
+
+    function redraw() {
+      wrap.innerHTML = '';
+      for (let i = 1; i <= 5; i++) {
+        const star = document.createElement('button');
+        star.type = 'button';
+        star.className = 'rating-star-btn';
+        star.textContent = i <= value ? '★' : '☆';
+        star.addEventListener('click', () => {
+          value = value === i ? 0 : i;
+          redraw();
+        });
+        wrap.appendChild(star);
+      }
+    }
+
+    redraw();
+    container.appendChild(wrap);
+    return { getValue: () => value };
+  }
+
+  // 굵게/기울임/밑줄 서식을 쓸 수 있는 입력 위젯(긴 글, 접은 글 항목에 사용).
+  // contenteditable div를 입력창으로 쓰고, 값은 innerHTML(HTML 형식의 서식 있는 텍스트)로 주고받는다.
+  function mountRichText(container, key, initialHtml) {
+    const wrap = document.createElement('div');
+    wrap.className = 'richtext-wrap';
+
+    const toolbar = document.createElement('div');
+    toolbar.className = 'richtext-toolbar';
+    toolbar.innerHTML = `
+      <button type="button" class="richtext-btn" data-cmd="bold" title="굵게"><b>B</b></button>
+      <button type="button" class="richtext-btn" data-cmd="italic" title="기울임"><i>I</i></button>
+      <button type="button" class="richtext-btn" data-cmd="underline" title="밑줄"><u>U</u></button>
+    `;
+
+    const editable = document.createElement('div');
+    editable.className = 'richtext-editable';
+    editable.contentEditable = 'true';
+    editable.setAttribute('data-field-key', key);
+    editable.setAttribute('data-placeholder', '내용을 입력해주세요');
+    editable.innerHTML = initialHtml || '';
+
+    toolbar.querySelectorAll('.richtext-btn').forEach((btn) => {
+      // mousedown에서 기본 동작을 막아야 클릭해도 편집 중이던 선택 영역이 풀리지 않는다.
+      btn.addEventListener('mousedown', (e) => e.preventDefault());
+      btn.addEventListener('click', () => {
+        editable.focus();
+        document.execCommand(btn.getAttribute('data-cmd'));
+      });
+    });
+
+    wrap.appendChild(toolbar);
+    wrap.appendChild(editable);
+    container.appendChild(wrap);
+  }
+
+  // ---------- 이미지 확대/자르기 모달 ----------
+  const cropOverlayEl = document.getElementById('cropOverlay');
+  const cropImageEl = document.getElementById('cropImage');
+  const cropCloseEl = document.getElementById('cropClose');
+  let activeCropper = null;
+
+  function closeCropModal() {
+    cropOverlayEl.classList.remove('is-open');
+    if (activeCropper) {
+      activeCropper.destroy();
+      activeCropper = null;
+    }
+  }
+  cropCloseEl.addEventListener('click', closeCropModal);
+  cropOverlayEl.addEventListener('click', (e) => {
+    if (e.target === cropOverlayEl) closeCropModal();
+  });
+
+  // 버튼에 리스너를 계속 새로 붙이면(이미지 슬롯 두 개, 여러 번 열기) 예전 리스너가 쌓이므로,
+  // 버튼을 복제해서 바꿔치기하는 방식으로 매번 깨끗하게 새 리스너만 남긴다.
+  function freshButton(id) {
+    const el = document.getElementById(id);
+    const clone = el.cloneNode(true);
+    el.parentNode.replaceChild(clone, el);
+    return clone;
+  }
+
+  // file: 사용자가 고른 원본 이미지 파일. onApply(blob): "적용" 눌렀을 때 잘라낸 결과(jpeg blob)를 받는 콜백.
+  function openCropModal(file, onApply) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      cropOverlayEl.classList.add('is-open');
+      cropImageEl.onload = () => {
+        if (activeCropper) {
+          activeCropper.destroy();
+          activeCropper = null;
+        }
+        activeCropper = new Cropper(cropImageEl, {
+          viewMode: 1,
+          autoCropArea: 1,
+          background: false,
+          responsive: true,
+        });
+      };
+      cropImageEl.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+
+    const applyBtn = freshButton('cropApply');
+    const skipBtn = freshButton('cropSkip');
+    const zoomInBtn = freshButton('cropZoomIn');
+    const zoomOutBtn = freshButton('cropZoomOut');
+    const rotateBtn = freshButton('cropRotate');
+    const resetBtn = freshButton('cropReset');
+
+    zoomInBtn.addEventListener('click', () => activeCropper && activeCropper.zoom(0.1));
+    zoomOutBtn.addEventListener('click', () => activeCropper && activeCropper.zoom(-0.1));
+    rotateBtn.addEventListener('click', () => activeCropper && activeCropper.rotate(90));
+    resetBtn.addEventListener('click', () => activeCropper && activeCropper.reset());
+
+    applyBtn.addEventListener('click', () => {
+      if (!activeCropper) return;
+      activeCropper.getCroppedCanvas({ imageSmoothingQuality: 'high' }).toBlob(
+        (blob) => {
+          onApply(blob);
+          closeCropModal();
+        },
+        'image/jpeg',
+        0.92
+      );
+    });
+
+    skipBtn.addEventListener('click', () => {
+      closeCropModal();
+    });
+  }
+
+  // 이미지 파일 입력창에 파일을 고르면 곧바로 자르기 모달을 띄운다. "적용"을 누르면
+  // 잘라낸 결과가 pendingCroppedFiles[slotKey]에 저장되고, 저장 시 원본 파일 대신 이걸 쓴다.
+  // "자르지 않고 원본 그대로"를 누르면 아무 것도 저장하지 않고, 원본 파일 입력값이 그대로 쓰인다.
+  function wireImageCropInput(inputEl, slotKey) {
+    inputEl.addEventListener('change', () => {
+      const file = inputEl.files[0];
+      delete pendingCroppedFiles[slotKey];
+      if (!file) return;
+      // 자르기 도구(cdnjs)를 못 불러온 상태라면(네트워크 문제 등) 자르기 단계 없이
+      // 원본 파일을 그대로 쓴다 — 저장 자체가 막히면 안 되니까.
+      if (typeof Cropper === 'undefined') return;
+      openCropModal(file, (blob) => {
+        pendingCroppedFiles[slotKey] = { blob, ext: 'jpg' };
+      });
+    });
+  }
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.substring(reader.result.indexOf(',') + 1));
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
   function escapeAttr(str) {
     return String(str == null ? '' : str).replace(/"/g, '&quot;');
   }
 
   let currentFieldWidgets = {};
+  // 이미지 자르기 모달에서 만들어진 결과(잘라낸 blob)를 여기에 담아둔다.
+  // { image: {blob, ext}, profileImage: {blob, ext} } 형태. 자르지 않고 원본 그대로
+  // 쓰기로 하면 여기에 값이 안 채워지고, 그럴 때는 파일 입력창의 원본 파일을 그대로 쓴다.
+  let pendingCroppedFiles = {};
 
   function renderDynamicSection(w, existing, presetSubcategory) {
     const container = document.getElementById('dynamicFieldsContainer');
@@ -623,6 +829,16 @@
         taBadge.className = 'field-type-tag';
         taBadge.textContent = '긴 글';
         labelEditRow.appendChild(taBadge);
+      } else if (f.type === 'collapse') {
+        const clBadge = document.createElement('span');
+        clBadge.className = 'field-type-tag';
+        clBadge.textContent = '접은 글';
+        labelEditRow.appendChild(clBadge);
+      } else if (f.type === 'rating') {
+        const rtBadge = document.createElement('span');
+        rtBadge.className = 'field-type-tag';
+        rtBadge.textContent = '레이팅';
+        labelEditRow.appendChild(rtBadge);
       }
       label.appendChild(labelEditRow);
 
@@ -630,12 +846,12 @@
         const tagContainer = document.createElement('div');
         label.appendChild(tagContainer);
         currentFieldWidgets[f.key] = mountTagInput(tagContainer, rawVal);
-      } else if (f.type === 'textarea') {
-        const ta = document.createElement('textarea');
-        ta.className = 'form-input form-textarea';
-        ta.setAttribute('data-field-key', f.key);
-        ta.value = rawVal || '';
-        label.appendChild(ta);
+      } else if (f.type === 'textarea' || f.type === 'collapse') {
+        mountRichText(label, f.key, rawVal);
+      } else if (f.type === 'rating') {
+        const ratingContainer = document.createElement('div');
+        label.appendChild(ratingContainer);
+        currentFieldWidgets[f.key] = mountRatingInput(ratingContainer, rawVal);
       } else if (f.type === 'category' && f.multi) {
         const tagContainer = document.createElement('div');
         label.appendChild(tagContainer);
@@ -729,6 +945,8 @@
         <option value="text">텍스트 입력</option>
         <option value="tags">태그 입력</option>
         <option value="textarea">긴 글(소개·성격 등)</option>
+        <option value="collapse">접은 글(눌러야 펼쳐짐)</option>
+        <option value="rating">레이팅(별점)</option>
         <option value="category">분류(사이드바·갤러리 구역)</option>
       </select>
       <button type="button" class="field-manager-add-btn" id="newFieldBtn">+ 항목 추가</button>
@@ -825,9 +1043,11 @@
       if (f.key === 'name') return;
       if (f.type === 'tags' || (f.type === 'category' && f.multi)) {
         snap.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
-      } else if (f.type === 'textarea') {
-        const ta = document.querySelector(`textarea[data-field-key="${f.key}"]`);
-        snap.fields[f.key] = ta ? ta.value : '';
+      } else if (f.type === 'rating') {
+        snap.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValue() : 0;
+      } else if (f.type === 'textarea' || f.type === 'collapse') {
+        const rt = document.querySelector(`.richtext-editable[data-field-key="${f.key}"]`);
+        snap.fields[f.key] = rt ? rt.innerHTML : '';
       } else {
         const inp = document.querySelector(`[data-field-key="${f.key}"]`);
         snap.fields[f.key] = inp ? inp.value : '';
@@ -1012,6 +1232,10 @@
 
     renderDynamicSection(w, existing, presetSubcategory);
 
+    pendingCroppedFiles = {};
+    wireImageCropInput(document.getElementById('fImage'), 'image');
+    wireImageCropInput(document.getElementById('fProfileImage'), 'profileImage');
+
     let selectedWorldId = w.id;
 
     function refreshWorldSelect(selectId) {
@@ -1075,7 +1299,8 @@
         if (f.type === 'tags' || (f.type === 'category' && f.multi)) {
           obj.fields[f.key] = presetSubcategory ? [presetSubcategory] : [];
         } else if (f.type === 'category') obj.fields[f.key] = presetSubcategory || '';
-        else if (f.type === 'textarea') obj.fields[f.key] = '';
+        else if (f.type === 'rating') obj.fields[f.key] = 0;
+        else if (f.type === 'textarea' || f.type === 'collapse') obj.fields[f.key] = '';
         else obj.fields[f.key] = '-';
       });
 
@@ -1223,9 +1448,11 @@
       if (f.key === 'name') return; // 이름은 obj.name(최상위)에 이미 저장됨
       if (f.type === 'tags' || (f.type === 'category' && f.multi)) {
         obj.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
-      } else if (f.type === 'textarea') {
-        const ta = document.querySelector(`textarea[data-field-key="${f.key}"]`);
-        obj.fields[f.key] = ta ? ta.value.trim() : '';
+      } else if (f.type === 'rating') {
+        obj.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValue() : 0;
+      } else if (f.type === 'textarea' || f.type === 'collapse') {
+        const rt = document.querySelector(`.richtext-editable[data-field-key="${f.key}"]`);
+        obj.fields[f.key] = rt ? rt.innerHTML.trim() : '';
       } else if (f.type === 'category') {
         const input = document.querySelector(`[data-field-key="${f.key}"]`);
         obj.fields[f.key] = input ? input.value.trim() : '';
@@ -1241,19 +1468,23 @@
 
     try {
       const imageFile = document.getElementById('fImage').files[0];
-      if (imageFile) {
-        const ext = imageFile.name.split('.').pop();
+      const croppedImage = pendingCroppedFiles.image;
+      if (croppedImage || imageFile) {
+        const ext = croppedImage ? croppedImage.ext : imageFile.name.split('.').pop();
         const imagePath = `${ASSETS_DIR}/${obj.id}.${ext}`;
-        const base64 = await fileToBase64(imageFile);
+        const base64 = croppedImage ? await blobToBase64(croppedImage.blob) : await fileToBase64(imageFile);
         const existingImageSha = await getFileSha(imagePath);
         await githubPutFile(imagePath, base64, `Add image for ${name}`, existingImageSha);
         obj.image = imagePath;
       }
       const profileImageFile = document.getElementById('fProfileImage').files[0];
-      if (profileImageFile) {
-        const ext = profileImageFile.name.split('.').pop();
+      const croppedProfileImage = pendingCroppedFiles.profileImage;
+      if (croppedProfileImage || profileImageFile) {
+        const ext = croppedProfileImage ? croppedProfileImage.ext : profileImageFile.name.split('.').pop();
         const imagePath = `${ASSETS_DIR}/${obj.id}-profile.${ext}`;
-        const base64 = await fileToBase64(profileImageFile);
+        const base64 = croppedProfileImage
+          ? await blobToBase64(croppedProfileImage.blob)
+          : await fileToBase64(profileImageFile);
         const existingProfileSha = await getFileSha(imagePath);
         await githubPutFile(imagePath, base64, `Add profile image for ${name}`, existingProfileSha);
         obj.profileImage = imagePath;
