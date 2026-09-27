@@ -622,6 +622,15 @@
     editable.setAttribute('data-placeholder', '내용을 입력해주세요');
     editable.innerHTML = initialHtml || '';
 
+    // Cmd(맥/아이패드) 또는 Ctrl(윈도우) + B/I/U 단축키로도 서식이 바로 적용되게 한다.
+    editable.addEventListener('keydown', (e) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const k = e.key.toLowerCase();
+      if (k === 'b') { e.preventDefault(); document.execCommand('bold'); }
+      else if (k === 'i') { e.preventDefault(); document.execCommand('italic'); }
+      else if (k === 'u') { e.preventDefault(); document.execCommand('underline'); }
+    });
+
     toolbar.querySelectorAll('.richtext-btn').forEach((btn) => {
       // mousedown에서 기본 동작을 막아야 클릭해도 편집 중이던 선택 영역이 풀리지 않는다.
       btn.addEventListener('mousedown', (e) => e.preventDefault());
@@ -794,7 +803,11 @@
       moveWrap.appendChild(downBtn);
       row.appendChild(moveWrap);
 
-      const label = document.createElement('label');
+      // 참고: 이 한 줄(row) 안에는 "항목 이름 바꾸기" 입력창과 "실제 값" 입력창이 같이 들어있는데,
+      // 이걸 <label> 태그로 감싸면 값 칸(특히 서식 있는 글 편집창)을 눌러도 브라우저가 클릭을
+      // 첫 번째 입력창(이름 바꾸기 칸) 쪽으로 넘겨버려서 값 칸에 타이핑이 안 먹는 문제가 있었다.
+      // 그래서 <label> 대신 그냥 <div>로 감싼다(스타일은 동일하게 유지됨).
+      const label = document.createElement('div');
       label.className = 'form-label field-manager-label';
       const rawVal = f.key === 'name'
         ? (existing ? existing.name : '')
