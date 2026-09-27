@@ -47,8 +47,19 @@
   }
 
   async function loadWorlds() {
-    const res = await fetch('data/worlds.json?t=' + Date.now());
-    return res.json();
+    // 사이트에 같이 배포된 data/worlds.json 파일은 깃허브 페이지가 새로 빌드될 때까지
+    // (보통 몇십 초~1~2분) 방금 저장한 내용을 못 담고 있을 수 있다. 그래서 페이지를
+    // 열 때도 배포된 파일 대신 깃허브에서 지금 이 순간의 진짜 최신 내용을 바로 받아온다.
+    // ("저장하고 새로고침했는데 안 바뀌어 있다가, 한 번 더 새로고침해야 바뀌어 있는" 현상이 이것 때문)
+    try {
+      const { data, sha } = await fetchLiveWorlds();
+      worldsSha = sha;
+      return data;
+    } catch (err) {
+      console.warn('깃허브 API로 세계관 정보를 불러오지 못했어요. 배포된 파일로 대체합니다.', err);
+      const res = await fetch('data/worlds.json?t=' + Date.now());
+      return res.json();
+    }
   }
 
   async function loadCharacters() {
@@ -60,7 +71,7 @@
     const headers = { Accept: 'application/vnd.github+json' };
     if (token) headers.Authorization = `Bearer ${token}`;
     try {
-      const listRes = await fetch(apiUrl, { headers });
+      const listRes = await fetch(apiUrl, { headers, cache: 'no-store' });
       if (!listRes.ok) {
         const errBody = await listRes.json().catch(() => ({}));
         throw new Error(errBody.message || `GitHub API 응답 오류 (${listRes.status})`);
@@ -740,9 +751,15 @@
   // 다시 적용한 다음 저장한다. 이러면 다른 곳에서 그 사이에 만들어둔 변경이 있어도
   // 서로 덮어쓰지 않고 같이 남는다.
   async function fetchLiveWorlds() {
+    // cache: 'no-store'가 중요하다 — 브라우저가 이 GET 응답을 잠깐이라도 캐시해버리면,
+    // "최신 sha를 다시 받아서 재시도"를 해도 실제로는 캐시된 옛날 sha를 또 받아오게 되고,
+    // 그러면 재시도를 몇 번을 해도 계속 같은 "does not match" 충돌이 반복된다.
+    const token = getToken();
+    const headers = { Accept: 'application/vnd.github+json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
     const res = await fetch(
       `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${WORLDS_PATH}?ref=${GITHUB_BRANCH}`,
-      { headers: { Accept: 'application/vnd.github+json' } }
+      { headers, cache: 'no-store' }
     );
     if (!res.ok) throw new Error(`세계관 파일을 불러오지 못했어요 (${res.status})`);
     const data = await res.json();
@@ -752,14 +769,16 @@
 
   // mutateFn(freshWorlds)는 방금 깃허브에서 받아온 "가장 최신" worlds 배열을 직접 바꾸는
   // 함수다. 저장이 sha 충돌로 실패하면, 최신 내용을 다시 받아서 mutateFn을 한 번 더
-  // 적용해보는 식으로 최대 세 번까지 재시도한다.
+  // 적용해보는 식으로 최대 다섯 번까지 재시도한다(재시도 사이에 짧게 무작위 지연을 둬서
+  // 다른 탭/기기와 동시에 계속 부딪히는 걸 줄인다).
   async function applyWorldsChange(mutateFn) {
     const token = getToken();
     if (!token) {
       window.alert('세계관/항목 구조를 저장하려면 먼저 "⚙ 저장 설정"에서 토큰을 등록해주세요.');
       return false;
     }
-    for (let attempt = 0; attempt < 3; attempt++) {
+    const maxAttempts = 5;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const { data: freshWorlds, sha } = await fetchLiveWorlds();
         mutateFn(freshWorlds);
@@ -770,11 +789,12 @@
         return true;
       } catch (err) {
         const isConflict = /sha|does not match|expected/i.test(err.message || '');
-        if (!isConflict || attempt === 2) {
+        if (!isConflict || attempt === maxAttempts - 1) {
           console.error(err);
           window.alert('세계관 저장에 실패했어요: ' + err.message);
           return false;
         }
+        await new Promise((r) => setTimeout(r, 150 + Math.random() * 250));
         // 충돌이면 루프를 다시 돌면서 최신 내용을 받아 다시 시도한다.
       }
     }
@@ -1089,7 +1109,7 @@
     try {
       const res = await fetch(
         `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}?ref=${GITHUB_BRANCH}`,
-        { headers: { Accept: 'application/vnd.github+json' } }
+        { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' }
       );
       if (res.ok) {
         const data = await res.json();
