@@ -253,14 +253,14 @@
         "type": "textarea"
       },
       {
-        "key": "f_1790484546744",
-        "label": "성격",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790485356104",
         "label": "생일",
         "type": "text"
+      },
+      {
+        "key": "f_1790484546744",
+        "label": "성격",
+        "type": "textarea"
       },
       {
         "key": "f_1790484621408",
