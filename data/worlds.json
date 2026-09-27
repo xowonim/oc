@@ -224,7 +224,8 @@
       {
         "key": "f_1790477497994",
         "label": "학급",
-        "type": "category"
+        "type": "category",
+        "galleryGroup": true
       }
     ]
   }
