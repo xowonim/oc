@@ -119,11 +119,6 @@
         "type": "text"
       },
       {
-        "key": "affiliation",
-        "label": "소속",
-        "type": "text"
-      },
-      {
         "key": "role",
         "label": "역할",
         "type": "text"
