@@ -139,11 +139,6 @@
         "type": "textarea"
       },
       {
-        "key": "personality",
-        "label": "성격",
-        "type": "textarea"
-      },
-      {
         "key": "trivia",
         "label": "여담",
         "type": "textarea"
