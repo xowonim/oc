@@ -461,22 +461,51 @@
     // 만나면 그때까지 모은 걸 먼저 내보내고 이어서 긴 글/접은글을 넣는 식으로 처리한다).
     let pendingRows = [];
     if (world && world.useGradeClass) {
-      pendingRows.push(['학년', c.grade ?? '-']);
-      pendingRows.push(['학급', c.class ?? '-']);
+      pendingRows.push({ type: 'text', label: '학년', value: c.grade ?? '-' });
+      pendingRows.push({ type: 'text', label: '학급', value: c.class ?? '-' });
     }
 
+    // 레이팅(별점) 항목은 연속으로 나오면 한 줄에 하나씩이 아니라 2열로 묶어서 보여준다.
+    // 그리고 어느 쪽이든 그 줄 블록의 "맨 마지막"에는 밑줄을 안 그어서, 바로 다음에
+    // 오는 접은글/긴글 섹션의 윗줄과 겹쳐서 줄이 두 개로 보이는 문제를 없앤다.
     function rowsBlockHtml(rows) {
       if (rows.length === 0) return '';
-      return `<div class="modal-fields">${rows
-        .map(
-          ([label, value]) => `
-            <div class="modal-field-row">
-              <div class="modal-field-label">${label}</div>
-              <div class="modal-field-value">${value}</div>
+      let html = '<div class="modal-fields">';
+      let i = 0;
+      while (i < rows.length) {
+        if (rows[i].type === 'rating') {
+          const group = [];
+          while (i < rows.length && rows[i].type === 'rating') {
+            group.push(rows[i]);
+            i += 1;
+          }
+          const isGroupAtEnd = i === rows.length;
+          const totalGridRows = Math.ceil(group.length / 2);
+          html += '<div class="modal-rating-grid">';
+          group.forEach((r, idx) => {
+            const gridRowIdx = Math.floor(idx / 2);
+            const noBorder = isGroupAtEnd && gridRowIdx === totalGridRows - 1;
+            html += `
+              <div class="modal-rating-row${noBorder ? ' no-border' : ''}">
+                <div class="modal-field-label">${r.label}</div>
+                <div class="modal-field-value">${r.value}</div>
+              </div>
+            `;
+          });
+          html += '</div>';
+        } else {
+          const isLast = i === rows.length - 1;
+          html += `
+            <div class="modal-field-row${isLast ? ' no-border' : ''}">
+              <div class="modal-field-label">${rows[i].label}</div>
+              <div class="modal-field-value">${rows[i].value}</div>
             </div>
-          `
-        )
-        .join('')}</div>`;
+          `;
+          i += 1;
+        }
+      }
+      html += '</div>';
+      return html;
     }
 
     const orderedFields = world && world.fields ? world.fields.filter((f) => f.key !== 'name') : [];
@@ -507,10 +536,10 @@
       } else if (f.type === 'rating') {
         const n = Math.max(0, Math.min(5, Number(raw) || 0));
         const stars = '★'.repeat(n) + '☆'.repeat(5 - n);
-        pendingRows.push([f.label, `<span class="modal-rating">${stars}</span>`]);
+        pendingRows.push({ type: 'rating', label: f.label, value: `<span class="modal-rating">${stars}</span>` });
       } else {
         const val = f.type === 'tags' || Array.isArray(raw) ? renderTagPills(raw) : raw || '-';
-        pendingRows.push([f.label, val]);
+        pendingRows.push({ type: 'text', label: f.label, value: val });
       }
     });
     sectionsHtml += rowsBlockHtml(pendingRows);
