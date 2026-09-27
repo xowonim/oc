@@ -130,7 +130,7 @@
       },
       {
         "key": "role",
-        "label": "직업",
+        "label": "트레이너 계급",
         "type": "text"
       }
     ]
