@@ -164,12 +164,12 @@
   // 항목 자체에 붙은 sidebarFilter / galleryGroup 표시로 정해진다 (세계관마다 자유롭게 다르게 설정 가능).
   function sidebarCategoryField(world) {
     if (!world || !world.fields) return null;
-    return world.fields.find((f) => f.type === 'category' && f.sidebarFilter) || null;
+    return world.fields.find((f) => (f.type === 'category' || f.type === 'tags') && f.sidebarFilter) || null;
   }
 
   function galleryCategoryField(world) {
     if (!world || !world.fields) return null;
-    return world.fields.find((f) => f.type === 'category' && f.galleryGroup) || null;
+    return world.fields.find((f) => (f.type === 'category' || f.type === 'tags') && f.galleryGroup) || null;
   }
 
   function fieldValue(c, key) {
@@ -257,12 +257,33 @@
     return Array.isArray(v) ? v.includes(target) : v === target;
   }
 
+  // '기타'/'ETC'류 값은 가나다순/알파벳순으로 정렬하면 중간에 끼어버릴 수 있으니,
+  // 항상 목록 맨 아래로 보낸다.
+  function isMiscCategoryValue(v) {
+    const t = String(v || '').trim();
+    return t === '기타' || /^etc\.?$/i.test(t);
+  }
+
+  // 한글/영문/숫자로 시작하는 값보다, -, ?, +, * 같은 특수기호로 시작하는 값은
+  // 항상 아래쪽에 배치되도록 정렬 그룹을 나눈다. ('기타'/'ETC'는 그보다도 더 아래)
+  function categorySortGroup(v) {
+    const t = String(v || '').trim();
+    if (isMiscCategoryValue(t)) return 2;
+    if (/^[0-9a-zA-Z가-힣ㄱ-ㅎㅏ-ㅣ]/.test(t)) return 0;
+    return 1;
+  }
+
   function distinctFieldValues(worldId, key) {
     const values = [];
     characters
       .filter((c) => c.world === worldId)
       .forEach((c) => fieldValuesAsList(fieldValue(c, key)).forEach((v) => values.push(v)));
-    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
+    return Array.from(new Set(values)).sort((a, b) => {
+      const ga = categorySortGroup(a);
+      const gb = categorySortGroup(b);
+      if (ga !== gb) return ga - gb;
+      return a.localeCompare(b, 'ko', { numeric: true });
+    });
   }
 
   function getFiltered() {
@@ -1096,6 +1117,20 @@
         const tagContainer = document.createElement('div');
         label.appendChild(tagContainer);
         currentFieldWidgets[f.key] = mountTagInput(tagContainer, rawVal);
+
+        const roleRow = document.createElement('div');
+        roleRow.className = 'field-category-roles';
+        const sideChk = document.createElement('label');
+        sideChk.className = 'field-category-role-chk';
+        sideChk.innerHTML = `<input type="checkbox" ${f.sidebarFilter ? 'checked' : ''}> 사이드바 필터로 쓰기`;
+        sideChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'sidebarFilter', e.target.checked));
+        const galChk = document.createElement('label');
+        galChk.className = 'field-category-role-chk';
+        galChk.innerHTML = `<input type="checkbox" ${f.galleryGroup ? 'checked' : ''}> 갤러리 구역으로 묶기`;
+        galChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'galleryGroup', e.target.checked));
+        roleRow.appendChild(sideChk);
+        roleRow.appendChild(galChk);
+        label.appendChild(roleRow);
       } else if (f.type === 'textarea' || f.type === 'collapse') {
         mountRichText(label, f.key, rawVal);
       } else if (f.type === 'rating') {
@@ -1452,6 +1487,21 @@
     return worlds[0];
   }
 
+  async function moveTemplate(world, dir) {
+    let moved = false;
+    const ok = await saveWorldsWithMutation((freshWorlds) => {
+      const idx = freshWorlds.findIndex((w) => w.id === world.id);
+      const target = idx + dir;
+      if (idx === -1 || target < 0 || target >= freshWorlds.length) return;
+      const [item] = freshWorlds.splice(idx, 1);
+      freshWorlds.splice(target, 0, item);
+      moved = true;
+    });
+    if (!ok || !moved) return null;
+    renderSidebar();
+    return worldById(world.id);
+  }
+
   function openEditForm(existing, world, presetSubcategory) {
     const isEdit = !!existing;
     const w = world || (existing ? worldById(existing.world) : worlds[0]);
@@ -1467,6 +1517,8 @@
           <button type="button" class="template-mini-btn" id="templateAddBtn">+ 새 템플릿</button>
           <button type="button" class="template-mini-btn" id="templateRenameBtn">이름 변경</button>
           <button type="button" class="template-mini-btn danger" id="templateDelBtn">템플릿 삭제</button>
+          <button type="button" class="template-mini-btn" id="templateMoveUpBtn" title="탭 순서를 앞으로">▲ 순서</button>
+          <button type="button" class="template-mini-btn" id="templateMoveDownBtn" title="탭 순서를 뒤로">▼ 순서</button>
         </div>
         <div class="image-slot-row">
           <label class="form-label">이미지 삽입(1) — 갤러리 카드용
@@ -1529,6 +1581,18 @@
       const current = worldById(selectedWorldId);
       const renamed = await renameTemplate(current);
       if (renamed) switchToWorld(renamed);
+    });
+
+    document.getElementById('templateMoveUpBtn').addEventListener('click', async () => {
+      const current = worldById(selectedWorldId);
+      const moved = await moveTemplate(current, -1);
+      if (moved) switchToWorld(moved);
+    });
+
+    document.getElementById('templateMoveDownBtn').addEventListener('click', async () => {
+      const current = worldById(selectedWorldId);
+      const moved = await moveTemplate(current, 1);
+      if (moved) switchToWorld(moved);
     });
 
     document.getElementById('formFallbackLink').addEventListener('click', (e) => {
