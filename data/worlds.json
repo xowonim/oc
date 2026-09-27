@@ -218,7 +218,8 @@
       {
         "key": "f_1790460191966",
         "label": "학년",
-        "type": "category"
+        "type": "category",
+        "sidebarFilter": true
       }
     ]
   }
