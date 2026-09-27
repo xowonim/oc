@@ -8,6 +8,16 @@
   const ASSETS_DIR = 'assets';
   const TOKEN_KEY = 'oc_gh_token';
 
+  // 이미지가 방금 막 저장된 직후에는 깃허브 페이지(배포된 사이트)가 다시 빌드될 때까지
+  // (몇십 초~1~2분) 그 이미지 파일 자체가 아직 안 떠서, 사진이 깨진 것처럼(물음표 아이콘)
+  // 보일 수 있다. 반면 raw.githubusercontent.com은 저장소에 커밋된 내용을 거의 바로
+  // 그대로 보여주기 때문에, 이미지는 전부 이 주소를 통해 불러와서 그 지연을 없앤다.
+  function assetUrl(path) {
+    if (!path) return path;
+    if (/^([a-z]+:)?\/\//i.test(path) || path.startsWith('data:') || path.startsWith('blob:')) return path;
+    return `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${path}`;
+  }
+
   const PERSON_ICON = `
     <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 12c2.76 0 5-2.46 5-5.5S14.76 1 12 1 7 3.46 7 6.5 9.24 12 12 12zm0 2.5c-3.86 0-11 2-11 6v2.5h22V20.5c0-4-7.14-6-11-6z"/>
@@ -422,7 +432,7 @@
     if (c.image) {
       const img = document.createElement('img');
       img.className = 'char-card-image';
-      img.src = c.image;
+      img.src = assetUrl(c.image);
       img.alt = c.name;
       protectImage(img);
       img.onerror = () => {
@@ -549,7 +559,7 @@
                   <div class="modal-entry-image-wrap">
                     ${
                       entry.image
-                        ? `<img src="${entry.image}" class="modal-entry-image" alt="${entry.name || ''}">`
+                        ? `<img src="${assetUrl(entry.image)}" class="modal-entry-image" alt="${entry.name || ''}">`
                         : `<div class="modal-entry-image-placeholder">${PERSON_ICON}</div>`
                     }
                   </div>
@@ -600,7 +610,7 @@
     if (profileImg) {
       const img = document.createElement('img');
       img.className = 'modal-image';
-      img.src = profileImg;
+      img.src = assetUrl(profileImg);
       img.alt = c.name;
       protectImage(img);
       img.onerror = () => {
@@ -749,7 +759,7 @@
 
         const imgLabel = document.createElement('label');
         imgLabel.className = 'entry-image-wrap';
-        const previewSrc = pendingFiles[entry.id] ? URL.createObjectURL(pendingFiles[entry.id]) : entry.image;
+        const previewSrc = pendingFiles[entry.id] ? URL.createObjectURL(pendingFiles[entry.id]) : assetUrl(entry.image);
         if (previewSrc) {
           imgLabel.innerHTML = `<img src="${previewSrc}" class="entry-image-preview" alt="">`;
         } else {
