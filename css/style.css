@@ -639,10 +639,12 @@ body {
 .template-select-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   position: absolute;
   top: -14px;
   left: 10px;
+  right: 10px;
 }
 
 .template-select-row .template-select {
