@@ -537,6 +537,32 @@
         const n = Math.max(0, Math.min(5, Number(raw) || 0));
         const stars = '★'.repeat(n) + '☆'.repeat(5 - n);
         pendingRows.push({ type: 'rating', label: f.label, value: `<span class="modal-rating">${stars}</span>` });
+      } else if (f.type === 'entries') {
+        sectionsHtml += rowsBlockHtml(pendingRows);
+        pendingRows = [];
+        const list = Array.isArray(raw) ? raw : [];
+        if (list.length > 0) {
+          const itemsHtml = list
+            .map(
+              (entry) => `
+                <div class="modal-entry-row">
+                  <div class="modal-entry-image-wrap">
+                    ${
+                      entry.image
+                        ? `<img src="${entry.image}" class="modal-entry-image" alt="${entry.name || ''}">`
+                        : `<div class="modal-entry-image-placeholder">${PERSON_ICON}</div>`
+                    }
+                  </div>
+                  <div class="modal-entry-text">
+                    <p class="modal-entry-name">${entry.name || '-'}</p>
+                    ${entry.desc ? `<p class="modal-entry-desc">${entry.desc}</p>` : ''}
+                  </div>
+                </div>
+              `
+            )
+            .join('');
+          sectionsHtml += `<h3 class="modal-section-title">${f.label}</h3><div class="modal-entry-list">${itemsHtml}</div>`;
+        }
       } else {
         const val = f.type === 'tags' || Array.isArray(raw) ? renderTagPills(raw) : raw || '-';
         pendingRows.push({ type: 'text', label: f.label, value: val });
@@ -567,6 +593,8 @@
         if (arrow) arrow.textContent = wasHidden ? '▴ 접기' : '▾ 펼치기';
       });
     });
+
+    modalBody.querySelectorAll('.modal-entry-image').forEach((img) => protectImage(img));
 
     const imageWrap = document.getElementById('modalImageWrap');
     if (profileImg) {
@@ -697,6 +725,102 @@
     redraw();
     container.appendChild(wrap);
     return { getValue: () => value };
+  }
+
+  // "엔트리 목록" 입력 위젯: 이미지 + 이름 + 간단한 설명을 한 세트로 하는 항목을 여러 개
+  // 추가/삭제할 수 있다(예: 포켓몬 기반 캐릭터의 파티원 목록). 이미지 파일은 저장(submitForm)
+  // 시점에 업로드되므로, 여기서는 아직 업로드 안 된 파일을 entry.id별로 따로 들고 있는다.
+  function mountEntryListInput(container, initialEntries) {
+    let entries = Array.isArray(initialEntries) ? initialEntries.map((e) => ({ ...e })) : [];
+    const pendingFiles = {};
+
+    const listWrap = document.createElement('div');
+    listWrap.className = 'entry-list-wrap';
+
+    function newEntryId() {
+      return 'en_' + Date.now() + Math.random().toString(36).slice(2, 6);
+    }
+
+    function redraw() {
+      listWrap.innerHTML = '';
+      entries.forEach((entry, idx) => {
+        const row = document.createElement('div');
+        row.className = 'entry-row';
+
+        const imgLabel = document.createElement('label');
+        imgLabel.className = 'entry-image-wrap';
+        const previewSrc = pendingFiles[entry.id] ? URL.createObjectURL(pendingFiles[entry.id]) : entry.image;
+        if (previewSrc) {
+          imgLabel.innerHTML = `<img src="${previewSrc}" class="entry-image-preview" alt="">`;
+        } else {
+          imgLabel.innerHTML = `<span class="entry-image-placeholder">사진</span>`;
+        }
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.className = 'entry-image-input';
+        fileInput.addEventListener('change', () => {
+          const file = fileInput.files[0];
+          if (file) {
+            pendingFiles[entry.id] = file;
+            redraw();
+          }
+        });
+        imgLabel.appendChild(fileInput);
+        row.appendChild(imgLabel);
+
+        const textCol = document.createElement('div');
+        textCol.className = 'entry-text-col';
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'form-input entry-name-input';
+        nameInput.placeholder = '이름(예: 포켓몬 이름)';
+        nameInput.value = entry.name || '';
+        nameInput.addEventListener('input', () => {
+          entry.name = nameInput.value;
+        });
+        const descInput = document.createElement('textarea');
+        descInput.className = 'form-input entry-desc-input';
+        descInput.placeholder = '간략한 설명';
+        descInput.value = entry.desc || '';
+        descInput.addEventListener('input', () => {
+          entry.desc = descInput.value;
+        });
+        textCol.appendChild(nameInput);
+        textCol.appendChild(descInput);
+        row.appendChild(textCol);
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'entry-del-btn';
+        delBtn.textContent = '삭제';
+        delBtn.addEventListener('click', () => {
+          entries.splice(idx, 1);
+          delete pendingFiles[entry.id];
+          redraw();
+        });
+        row.appendChild(delBtn);
+
+        listWrap.appendChild(row);
+      });
+
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'entry-add-btn';
+      addBtn.textContent = '+ 엔트리 추가';
+      addBtn.addEventListener('click', () => {
+        entries.push({ id: newEntryId(), name: '', desc: '', image: null });
+        redraw();
+      });
+      listWrap.appendChild(addBtn);
+    }
+
+    redraw();
+    container.appendChild(listWrap);
+    return {
+      getEntries: () => entries,
+      getPendingFiles: () => pendingFiles,
+    };
   }
 
   // 굵게/기울임/밑줄 서식을 쓸 수 있는 입력 위젯(긴 글, 접은 글 항목에 사용).
@@ -950,6 +1074,11 @@
         rtBadge.className = 'field-type-tag';
         rtBadge.textContent = '레이팅';
         labelEditRow.appendChild(rtBadge);
+      } else if (f.type === 'entries') {
+        const enBadge = document.createElement('span');
+        enBadge.className = 'field-type-tag';
+        enBadge.textContent = '엔트리';
+        labelEditRow.appendChild(enBadge);
       }
       label.appendChild(labelEditRow);
 
@@ -963,6 +1092,10 @@
         const ratingContainer = document.createElement('div');
         label.appendChild(ratingContainer);
         currentFieldWidgets[f.key] = mountRatingInput(ratingContainer, rawVal);
+      } else if (f.type === 'entries') {
+        const entryContainer = document.createElement('div');
+        label.appendChild(entryContainer);
+        currentFieldWidgets[f.key] = mountEntryListInput(entryContainer, Array.isArray(rawVal) ? rawVal : []);
       } else if (f.type === 'category' && f.multi) {
         const tagContainer = document.createElement('div');
         label.appendChild(tagContainer);
@@ -1058,6 +1191,7 @@
         <option value="textarea">긴 글(소개·성격 등)</option>
         <option value="collapse">접은 글(눌러야 펼쳐짐)</option>
         <option value="rating">레이팅(별점)</option>
+        <option value="entries">엔트리 목록(이미지+이름+설명)</option>
         <option value="category">분류(사이드바·갤러리 구역)</option>
       </select>
       <button type="button" class="field-manager-add-btn" id="newFieldBtn">+ 항목 추가</button>
@@ -1156,6 +1290,11 @@
         snap.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
       } else if (f.type === 'rating') {
         snap.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValue() : 0;
+      } else if (f.type === 'entries') {
+        // 참고: 엔트리 안에서 새로 고른(아직 저장 안 된) 이미지 파일은 스냅샷에 담을 수 없어서
+        // 항목을 추가/삭제하는 등 폼이 다시 그려지면 그 이미지 선택은 다시 해야 한다
+        // (캐릭터 이미지(1)/(2) 칸도 원래 같은 제약이 있다).
+        snap.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getEntries() : [];
       } else if (f.type === 'textarea' || f.type === 'collapse') {
         const rt = document.querySelector(`.richtext-editable[data-field-key="${f.key}"]`);
         snap.fields[f.key] = rt ? rt.innerHTML : '';
@@ -1411,6 +1550,7 @@
           obj.fields[f.key] = presetSubcategory ? [presetSubcategory] : [];
         } else if (f.type === 'category') obj.fields[f.key] = presetSubcategory || '';
         else if (f.type === 'rating') obj.fields[f.key] = 0;
+        else if (f.type === 'entries') obj.fields[f.key] = [];
         else if (f.type === 'textarea' || f.type === 'collapse') obj.fields[f.key] = '';
         else obj.fields[f.key] = '-';
       });
@@ -1561,6 +1701,9 @@
         obj.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
       } else if (f.type === 'rating') {
         obj.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValue() : 0;
+      } else if (f.type === 'entries') {
+        const list = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getEntries() : [];
+        obj.fields[f.key] = list.map((e) => ({ id: e.id, name: e.name || '', desc: e.desc || '', image: e.image || null }));
       } else if (f.type === 'textarea' || f.type === 'collapse') {
         const rt = document.querySelector(`.richtext-editable[data-field-key="${f.key}"]`);
         obj.fields[f.key] = rt ? rt.innerHTML.trim() : '';
@@ -1599,6 +1742,26 @@
         const existingProfileSha = await getFileSha(imagePath);
         await githubPutFile(imagePath, base64, `Add profile image for ${name}`, existingProfileSha);
         obj.profileImage = imagePath;
+      }
+
+      // 엔트리 목록 항목들 안에 새로 고른 이미지가 있으면 각각 업로드하고, 그 경로를
+      // 해당 엔트리의 image 값으로 채워 넣는다.
+      for (const f of world.fields || []) {
+        if (f.type !== 'entries') continue;
+        const widget = currentFieldWidgets[f.key];
+        if (!widget) continue;
+        const pending = widget.getPendingFiles();
+        const list = obj.fields[f.key] || [];
+        for (const entry of list) {
+          const file = pending[entry.id];
+          if (!file) continue;
+          const ext = file.name.split('.').pop() || 'png';
+          const entryImagePath = `${ASSETS_DIR}/${obj.id}-${f.key}-${entry.id}.${ext}`;
+          const base64 = await fileToBase64(file);
+          const existingEntrySha = await getFileSha(entryImagePath);
+          await githubPutFile(entryImagePath, base64, `Add entry image for ${name}`, existingEntrySha);
+          entry.image = entryImagePath;
+        }
       }
 
       const path = isEdit ? existing._path : `${CHARACTERS_DIR}/${obj.id}.json`;
