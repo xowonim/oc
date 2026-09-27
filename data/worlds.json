@@ -31,14 +31,14 @@
         "multi": true
       },
       {
-        "key": "f_1790485524353",
-        "label": "성별",
-        "type": "text"
-      },
-      {
         "key": "f_1790492015318",
         "label": "주 오행",
         "type": "tags"
+      },
+      {
+        "key": "f_1790485524353",
+        "label": "성별",
+        "type": "text"
       },
       {
         "key": "age",
