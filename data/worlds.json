@@ -258,14 +258,14 @@
         "type": "textarea"
       },
       {
-        "key": "f_1790484546744",
-        "label": "성격",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790485416027",
         "label": "신체",
         "type": "text"
+      },
+      {
+        "key": "f_1790484546744",
+        "label": "성격",
+        "type": "textarea"
       },
       {
         "key": "f_1790484621408",
