@@ -56,14 +56,14 @@
         "type": "textarea"
       },
       {
-        "key": "history",
-        "label": "작중행적",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790485524353",
         "label": "성별",
         "type": "text"
+      },
+      {
+        "key": "history",
+        "label": "작중행적",
+        "type": "textarea"
       },
       {
         "key": "personality",
