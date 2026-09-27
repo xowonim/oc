@@ -61,14 +61,14 @@
         "type": "textarea"
       },
       {
-        "key": "history",
-        "label": "작중행적",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790492015318",
         "label": "주 오행",
         "type": "tags"
+      },
+      {
+        "key": "history",
+        "label": "작중행적",
+        "type": "textarea"
       },
       {
         "key": "personality",
