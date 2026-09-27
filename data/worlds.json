@@ -61,14 +61,14 @@
         "type": "textarea"
       },
       {
-        "key": "trivia",
-        "label": "여담",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790485496456",
         "label": "신체",
         "type": "text"
+      },
+      {
+        "key": "trivia",
+        "label": "여담",
+        "type": "textarea"
       }
     ]
   },
