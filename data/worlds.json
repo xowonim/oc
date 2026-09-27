@@ -114,13 +114,13 @@
         "type": "text"
       },
       {
-        "key": "affiliation",
-        "label": "소속",
+        "key": "f_1790516064876",
+        "label": "영어 이름",
         "type": "text"
       },
       {
-        "key": "f_1790516064876",
-        "label": "영어 이름",
+        "key": "affiliation",
+        "label": "소속",
         "type": "text"
       },
       {
