@@ -134,14 +134,14 @@
         "type": "textarea"
       },
       {
-        "key": "personality",
-        "label": "성격",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790516225650",
         "label": "거주지",
         "type": "text"
+      },
+      {
+        "key": "personality",
+        "label": "성격",
+        "type": "textarea"
       },
       {
         "key": "trivia",
