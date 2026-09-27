@@ -222,15 +222,15 @@
         "sidebarFilter": true
       },
       {
+        "key": "f_1790485356104",
+        "label": "생일",
+        "type": "text"
+      },
+      {
         "key": "f_1790477497994",
         "label": "학급",
         "type": "category",
         "galleryGroup": true
-      },
-      {
-        "key": "f_1790485356104",
-        "label": "생일",
-        "type": "text"
       },
       {
         "key": "f_1790484073611",
