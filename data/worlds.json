@@ -114,14 +114,14 @@
         "type": "text"
       },
       {
-        "key": "age",
-        "label": "성별",
-        "type": "text"
-      },
-      {
         "key": "f_1790516117141",
         "label": "소속",
         "type": "tags"
+      },
+      {
+        "key": "age",
+        "label": "성별",
+        "type": "text"
       },
       {
         "key": "f_1790516225650",
