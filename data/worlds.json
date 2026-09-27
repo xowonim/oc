@@ -134,14 +134,14 @@
         "type": "textarea"
       },
       {
-        "key": "trivia",
-        "label": "여담",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790516117141",
         "label": "소속",
         "type": "tags"
+      },
+      {
+        "key": "trivia",
+        "label": "여담",
+        "type": "textarea"
       }
     ]
   },
