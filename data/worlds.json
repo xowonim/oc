@@ -66,14 +66,14 @@
         "type": "textarea"
       },
       {
-        "key": "personality",
-        "label": "성격",
-        "type": "textarea"
-      },
-      {
         "key": "f_1790492015318",
         "label": "주 오행",
         "type": "tags"
+      },
+      {
+        "key": "personality",
+        "label": "성격",
+        "type": "textarea"
       },
       {
         "key": "trivia",
