@@ -132,11 +132,6 @@
         "key": "role",
         "label": "직업",
         "type": "text"
-      },
-      {
-        "key": "trivia",
-        "label": "여담",
-        "type": "textarea"
       }
     ]
   },
