@@ -145,69 +145,6 @@
     ]
   },
   {
-    "id": "etc",
-    "name": "ETC",
-    "shortName": "ETC",
-    "description": "그 외 캐릭터",
-    "color": "#ffb26b",
-    "fixedOrderList": [
-      "리리",
-      "유희",
-      "도운",
-      "소선",
-      "반숙",
-      "완숙",
-      "선우",
-      "영모",
-      "탄숙",
-      "리율",
-      "티아"
-    ],
-    "fields": [
-      {
-        "key": "name",
-        "label": "이름",
-        "type": "text",
-        "core": true
-      },
-      {
-        "key": "f_1790516064876",
-        "label": "영어 이름",
-        "type": "text"
-      },
-      {
-        "key": "f_1790516117141",
-        "label": "소속",
-        "type": "tags"
-      },
-      {
-        "key": "age",
-        "label": "성별",
-        "type": "text"
-      },
-      {
-        "key": "f_1790516225650",
-        "label": "거주 지역",
-        "type": "text"
-      },
-      {
-        "key": "role",
-        "label": "트레이너 계급",
-        "type": "text"
-      },
-      {
-        "key": "f_1790516405599",
-        "label": "가족 관계",
-        "type": "text"
-      },
-      {
-        "key": "f_1790517475813",
-        "label": "소유 포켓몬",
-        "type": "entries"
-      }
-    ]
-  },
-  {
     "id": "w_1790459708806",
     "name": "YMKB",
     "shortName": "YMKB",
@@ -361,6 +298,69 @@
         "key": "f_1790492394900",
         "label": "체력",
         "type": "rating"
+      }
+    ]
+  },
+  {
+    "id": "etc",
+    "name": "ETC",
+    "shortName": "ETC",
+    "description": "그 외 캐릭터",
+    "color": "#ffb26b",
+    "fixedOrderList": [
+      "리리",
+      "유희",
+      "도운",
+      "소선",
+      "반숙",
+      "완숙",
+      "선우",
+      "영모",
+      "탄숙",
+      "리율",
+      "티아"
+    ],
+    "fields": [
+      {
+        "key": "name",
+        "label": "이름",
+        "type": "text",
+        "core": true
+      },
+      {
+        "key": "f_1790516064876",
+        "label": "영어 이름",
+        "type": "text"
+      },
+      {
+        "key": "f_1790516117141",
+        "label": "소속",
+        "type": "tags"
+      },
+      {
+        "key": "age",
+        "label": "성별",
+        "type": "text"
+      },
+      {
+        "key": "f_1790516225650",
+        "label": "거주 지역",
+        "type": "text"
+      },
+      {
+        "key": "role",
+        "label": "트레이너 계급",
+        "type": "text"
+      },
+      {
+        "key": "f_1790516405599",
+        "label": "가족 관계",
+        "type": "text"
+      },
+      {
+        "key": "f_1790517475813",
+        "label": "소유 포켓몬",
+        "type": "entries"
       }
     ]
   }
