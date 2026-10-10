@@ -98,7 +98,8 @@
       {
         "key": "f_1790459852228",
         "label": "영어 / 한자 이름",
-        "type": "text"
+        "type": "text",
+        "sortKey": true
       },
       {
         "key": "f_1790459909805",
