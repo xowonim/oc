@@ -191,7 +191,8 @@
       {
         "key": "f_1790484957343",
         "label": "싫어하는 사람",
-        "type": "text"
+        "type": "text",
+        "sortKey": true
       },
       {
         "key": "f_1790484965565",
