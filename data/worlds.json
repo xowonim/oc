@@ -214,14 +214,14 @@
         "type": "rating"
       },
       {
-        "key": "f_1790492376210",
-        "label": "무용",
-        "type": "rating"
-      },
-      {
         "key": "f_1791664562679",
         "label": "캐릭터 이야기 2",
         "type": "collapse"
+      },
+      {
+        "key": "f_1790492376210",
+        "label": "무용",
+        "type": "rating"
       },
       {
         "key": "f_1790492415019",
