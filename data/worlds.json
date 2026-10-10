@@ -224,7 +224,7 @@
         "key": "f_1791665631820",
         "label": "취미",
         "type": "text",
-        "sortKey": true
+        "sortKey": false
       },
       {
         "key": "f_1791665663135",
