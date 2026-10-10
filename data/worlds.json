@@ -204,14 +204,14 @@
         "type": "collapse"
       },
       {
-        "key": "f_1790490342827",
-        "label": "보컬",
-        "type": "rating"
-      },
-      {
         "key": "f_1791664562679",
         "label": "캐릭터 이야기 2",
         "type": "collapse"
+      },
+      {
+        "key": "f_1790490342827",
+        "label": "보컬",
+        "type": "rating"
       },
       {
         "key": "f_1790492405183",
