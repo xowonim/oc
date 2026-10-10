@@ -56,6 +56,76 @@
     return (a.name || '').localeCompare(b.name || '', 'ko');
   }
 
+  // 세계관의 항목 중 "정렬 기준으로 쓰기"가 켜진 항목이 있으면(예: 히라가나 읽기),
+  // 이름 대신 그 항목 값으로 정렬한다. 일본어(히라가나/가타카나) 읽기 순서를 그대로
+  // 지원하도록 'ja' 로케일로 비교한다.
+  function sortKeyField(world) {
+    if (!world || !world.fields) return null;
+    return world.fields.find((f) => f.sortKey) || null;
+  }
+
+  // 이름을 한글로 적어도(일본어식 이름을 한글로 음차 표기한 경우) 아이우에오(あ행) 순서로
+  // 자동 정렬하고 싶을 때 쓰는 표. 각 행은 히라가나 오십음도 순서를 그대로 따르고,
+  // 탁음/반탁음 행은 사전에서처럼 해당 청음 행 바로 뒤에 둔다.
+  const GOJUON_ROWS = [
+    ['아', '이', '우', '에', '오'], // あ
+    ['카', '키', '쿠', '케', '코'], // か
+    ['가', '기', '구', '게', '고'], // が
+    ['사', '시', '스', '세', '소'], // さ
+    ['자', '지', '즈', '제', '조'], // ざ
+    ['타', '치', '츠', '테', '토'], // た
+    ['다', '디', '두', '데', '도'], // だ
+    ['나', '니', '누', '네', '노'], // な
+    ['하', '히', '후', '헤', '호'], // は
+    ['바', '비', '부', '베', '보'], // ば
+    ['파', '피', '푸', '페', '포'], // ぱ
+    ['마', '미', '무', '메', '모'], // ま
+    ['야', '유', '요'],             // や
+    ['라', '리', '루', '레', '로'], // ら
+    ['와', '워', '위', '왜', '웨', '웡'], // わ (근사치)
+    ['응'], // ん
+  ];
+  const GOJUON_INDEX = new Map();
+  GOJUON_ROWS.forEach((row, rowIdx) => {
+    row.forEach((ch, colIdx) => {
+      if (!GOJUON_INDEX.has(ch)) GOJUON_INDEX.set(ch, rowIdx * 10 + colIdx);
+    });
+  });
+
+  function gojuonCharPriority(ch) {
+    return GOJUON_INDEX.has(ch) ? GOJUON_INDEX.get(ch) : 10000 + ch.charCodeAt(0);
+  }
+
+  function gojuonCompare(a, b) {
+    const sa = String(a || '');
+    const sb = String(b || '');
+    const len = Math.max(sa.length, sb.length);
+    for (let i = 0; i < len; i++) {
+      if (i >= sa.length) return -1;
+      if (i >= sb.length) return 1;
+      const pa = gojuonCharPriority(sa[i]);
+      const pb = gojuonCharPriority(sb[i]);
+      if (pa !== pb) return pa - pb;
+    }
+    return 0;
+  }
+
+  function sortCompare(a, b, world) {
+    if (world && world.sortByGojuon) {
+      const r = gojuonCompare(a.name, b.name);
+      if (r !== 0) return r;
+      return nameCompare(a, b);
+    }
+    const field = sortKeyField(world);
+    if (field) {
+      const va = fieldValue(a, field.key) || a.name || '';
+      const vb = fieldValue(b, field.key) || b.name || '';
+      const r = String(va).localeCompare(String(vb), 'ja');
+      if (r !== 0) return r;
+    }
+    return nameCompare(a, b);
+  }
+
   async function loadWorlds() {
     // 사이트에 같이 배포된 data/worlds.json 파일은 깃허브 페이지가 새로 빌드될 때까지
     // (보통 몇십 초~1~2분) 방금 저장한 내용을 못 담고 있을 수 있다. 그래서 페이지를
@@ -136,7 +206,7 @@
         const sa = ia === -1 ? Infinity : ia;
         const sb = ib === -1 ? Infinity : ib;
         if (sa !== sb) return sa - sb;
-        return nameCompare(a, b);
+        return sortCompare(a, b, world);
       });
     }
 
@@ -144,11 +214,11 @@
       return [...list].sort((a, b) => {
         const gc = gradeClassCompare(a, b);
         if (gc !== 0) return gc;
-        return nameCompare(a, b);
+        return sortCompare(a, b, world);
       });
     }
 
-    return [...list].sort(nameCompare);
+    return [...list].sort((a, b) => sortCompare(a, b, world));
   }
 
   function gradeClassCompare(a, b) {
@@ -406,7 +476,7 @@
     const groupNames = Array.from(new Set(known)).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
 
     groupNames.forEach((groupName) => {
-      const items = list.filter((c) => fieldMatches(fieldValue(c, groupField.key), groupName)).sort(nameCompare);
+      const items = list.filter((c) => fieldMatches(fieldValue(c, groupField.key), groupName)).sort((a, b) => sortCompare(a, b, world));
       const section = document.createElement('section');
       section.className = 'gallery-section';
       const header = document.createElement('h2');
@@ -420,7 +490,7 @@
       galleryEl.appendChild(section);
     });
 
-    const others = list.filter((c) => fieldValuesAsList(fieldValue(c, groupField.key)).length === 0).sort(nameCompare);
+    const others = list.filter((c) => fieldValuesAsList(fieldValue(c, groupField.key)).length === 0).sort((a, b) => sortCompare(a, b, world));
     if (others.length > 0) {
       const section = document.createElement('section');
       section.className = 'gallery-section';
@@ -1206,6 +1276,17 @@
         valInput.setAttribute('data-field-key', f.key);
         valInput.value = rawVal || '';
         label.appendChild(valInput);
+
+        if (!f.core) {
+          const roleRow = document.createElement('div');
+          roleRow.className = 'field-category-roles';
+          const sortChk = document.createElement('label');
+          sortChk.className = 'field-category-role-chk';
+          sortChk.innerHTML = `<input type="checkbox" ${f.sortKey ? 'checked' : ''}> 정렬 기준으로 쓰기 (예: 히라가나 읽기)`;
+          sortChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'sortKey', e.target.checked));
+          roleRow.appendChild(sortChk);
+          label.appendChild(roleRow);
+        }
       }
       row.appendChild(label);
 
@@ -1502,6 +1583,16 @@
     return worldById(world.id);
   }
 
+  async function toggleWorldFlag(world, flagKey, checked) {
+    const ok = await saveWorldsWithMutation((freshWorlds) => {
+      const w = freshWorlds.find((x) => x.id === world.id);
+      if (w) w[flagKey] = checked;
+    });
+    if (!ok) return null;
+    renderGallery();
+    return worldById(world.id);
+  }
+
   function openEditForm(existing, world, presetSubcategory) {
     const isEdit = !!existing;
     const w = world || (existing ? worldById(existing.world) : worlds[0]);
@@ -1519,6 +1610,9 @@
           <button type="button" class="template-mini-btn danger" id="templateDelBtn">템플릿 삭제</button>
           <button type="button" class="template-mini-btn" id="templateMoveUpBtn" title="탭 순서를 앞으로">▲ 순서</button>
           <button type="button" class="template-mini-btn" id="templateMoveDownBtn" title="탭 순서를 뒤로">▼ 순서</button>
+          <label class="template-mini-btn" id="templateGojuonLabel" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">
+            <input type="checkbox" id="templateGojuonChk" ${w.sortByGojuon ? 'checked' : ''}> 이름 아이우에오 순 정렬
+          </label>
         </div>
         <div class="image-slot-row">
           <label class="form-label">이미지 삽입(1) — 갤러리 카드용
@@ -1558,6 +1652,8 @@
     function switchToWorld(newWorld) {
       selectedWorldId = newWorld.id;
       refreshWorldSelect(newWorld.id);
+      const gojuonChk = document.getElementById('templateGojuonChk');
+      if (gojuonChk) gojuonChk.checked = !!newWorld.sortByGojuon;
       renderDynamicSection(newWorld, isEdit ? existing : null, null);
     }
 
@@ -1593,6 +1689,13 @@
       const current = worldById(selectedWorldId);
       const moved = await moveTemplate(current, 1);
       if (moved) switchToWorld(moved);
+    });
+
+    document.getElementById('templateGojuonChk').addEventListener('change', async (e) => {
+      const current = worldById(selectedWorldId);
+      const checked = e.target.checked;
+      const updated = await toggleWorldFlag(current, 'sortByGojuon', checked);
+      if (!updated) e.target.checked = !checked; // 저장 실패하면 체크 상태 되돌림
     });
 
     document.getElementById('formFallbackLink').addEventListener('click', (e) => {
