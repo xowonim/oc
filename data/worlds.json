@@ -234,14 +234,14 @@
         "type": "rating"
       },
       {
-        "key": "f_1790492423525",
-        "label": "성적",
-        "type": "rating"
-      },
-      {
         "key": "f_1791664722267",
         "label": "캐릭터 이야기 3",
         "type": "collapse"
+      },
+      {
+        "key": "f_1790492423525",
+        "label": "성적",
+        "type": "rating"
       },
       {
         "key": "f_1790492394900",
