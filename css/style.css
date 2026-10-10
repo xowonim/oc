@@ -1213,3 +1213,147 @@ body {
   flex-wrap: wrap;
   margin-bottom: 14px;
 }
+
+/* ---------- 모바일 가독성 보완 ---------- */
+@media (max-width: 640px) {
+  /* 사이드바를 세로로 긴 버튼 목록 대신, 가로로 스크롤되는 탭 줄로 바꿔서
+     콘텐츠가 화면 아래로 너무 밀려나지 않게 한다. */
+  .sidebar {
+    padding: 14px 16px 10px;
+  }
+
+  .logo-home {
+    margin-bottom: 4px;
+  }
+
+  .nav-list {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-item {
+    flex: 0 0 auto;
+  }
+
+  .nav-btn {
+    width: auto;
+    white-space: nowrap;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  /* 세부 필터(소속/거주지 등) 목록도 세로 목록 대신 줄바꿈되는 칩 형태로 */
+  .sub-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding-left: 0;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .sub-item {
+    font-size: 12px;
+  }
+
+  .sub-item-btn {
+    width: auto;
+    white-space: nowrap;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 12px;
+  }
+
+  .sub-item-btn.is-active {
+    background: #222;
+    color: #fff;
+    border-color: #222;
+  }
+
+  .settings-btn {
+    margin-top: 12px;
+  }
+
+  .content-header {
+    margin-bottom: 14px;
+  }
+
+  /* 갤러리 카드: 좁은 화면에서도 한 줄에 2장이 안정적으로 들어가게 */
+  .card-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .char-card-name {
+    font-size: 13px;
+  }
+
+  .char-card-aux,
+  .char-card-element {
+    font-size: 10px;
+  }
+
+  /* 상세 프로필 / 생성-수정 창: 패딩을 줄이고 더 넓게 써서 글자가 눌리지 않게 */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-card {
+    max-width: 100%;
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 18px 18px 0 0;
+    padding: 24px 16px 32px;
+  }
+
+  .modal-name {
+    font-size: 18px;
+  }
+
+  /* 항목 줄: 이름표|값을 한 줄에 욱여넣지 않고 위아래로 분리해서 읽기 편하게 */
+  .modal-field-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+  }
+
+  .modal-field-label {
+    width: auto;
+  }
+
+  .modal-rating-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-entry-list {
+    grid-template-columns: 1fr;
+  }
+
+  /* 캐릭터 생성/수정 폼: 템플릿 버튼 줄이 absolute 위치라 내용과 겹칠 수 있어서
+     좁은 화면에서는 일반 흐름으로 바꾸고, 이미지 업로드 칸도 세로로 쌓는다. */
+  .image-area {
+    padding-top: 54px;
+  }
+
+  .template-select-row {
+    position: static;
+    margin: -46px 0 10px;
+  }
+
+  .image-slot-row {
+    grid-template-columns: 1fr;
+  }
+
+  .form-label {
+    font-size: 13px;
+  }
+
+  .form-input,
+  .richtext-editable {
+    font-size: 16px; /* iOS에서 입력창 터치 시 자동 확대되는 것을 방지 */
+  }
+}
