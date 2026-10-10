@@ -229,14 +229,14 @@
         "type": "rating"
       },
       {
-        "key": "f_1790492415019",
-        "label": "눈치",
-        "type": "rating"
-      },
-      {
         "key": "f_1791664786222",
         "label": "캐릭터 이야기 4",
         "type": "collapse"
+      },
+      {
+        "key": "f_1790492415019",
+        "label": "눈치",
+        "type": "rating"
       },
       {
         "key": "f_1790492385635",
