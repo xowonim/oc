@@ -187,7 +187,7 @@
         "key": "f_1790484951928",
         "label": "싫어하는 것",
         "type": "text",
-        "sortKey": true
+        "sortKey": false
       },
       {
         "key": "f_1790484957343",
