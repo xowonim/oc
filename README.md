@@ -1,16 +1,16 @@
 # OC LIST by xowon
 
 안녕하세요.. 반갑습니다 환영합니다
-이 파일들을 이용해서 캐릭터들을 나열하고 서사 정리하는 사이트를 만들 수 있답니다
+이 곳의 파일들을 이용해서 캐릭터와 서사를 정리하는 사이트를 만들 수 있답니다
 
-## 구조
+## 다운로드 하셔야 할 파일들..
 
 ```
 index.html                       메인 페이지 (사이드바 + 갤러리 + 상세/생성/설정 모달)
 css/style.css                     스타일
 js/app.js                         데이터 로드, 정렬/그룹, 렌더링, 생성·수정 로직
-data/worlds.json                  세계관(神世界/OC/YMKB/ETC) 정의, 정렬·분류 규칙, 항목(필드) 목록
-data/characters/                  캐릭터 파일들 (파일 하나 = 캐릭터 한 명)
+data/worlds.json                  세계관 리스트, 정렬·분류 규칙, 항목(필드) 목록
+data/characters/                  캐릭터 파일 (파일 하나 = 캐릭터 한 명)
 data/characters/_template.json    수동으로 만들 때 참고용 틀
 assets/                           캐릭터 이미지
 ```
