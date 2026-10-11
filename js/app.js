@@ -93,8 +93,25 @@
     });
   });
 
+  // 받침(종성)이 있는 글자(신, 민 등)는 표에 그 글자 그대로는 없지만, 받침을 뗀 소리
+  // (신→시, 민→미)는 표에 있는 경우가 많다. 그래서 받침을 뗀 글자로도 한 번 더 찾아본다 —
+  // 그래야 "신"이 "시" 바로 다음(사행)이 아니라 엉뚱하게 맨 뒤로 밀려나지 않는다.
+  function hangulBaseChar(ch) {
+    const code = ch.codePointAt(0);
+    if (code < 0xac00 || code > 0xd7a3) return null;
+    const offset = code - 0xac00;
+    const lead = Math.floor(offset / (21 * 28));
+    const vowel = Math.floor((offset % (21 * 28)) / 28);
+    return String.fromCodePoint(0xac00 + (lead * 21 + vowel) * 28);
+  }
+
   function gojuonCharPriority(ch) {
-    return GOJUON_INDEX.has(ch) ? GOJUON_INDEX.get(ch) : 10000 + ch.charCodeAt(0);
+    if (GOJUON_INDEX.has(ch)) return GOJUON_INDEX.get(ch);
+    const base = hangulBaseChar(ch);
+    // 받침 없는 같은 소리가 표에 있으면 그 자리 바로 뒤(+0.5)로 — 같은 행 안에서, 받침 없는
+    // 글자보다는 뒤에 오도록.
+    if (base && base !== ch && GOJUON_INDEX.has(base)) return GOJUON_INDEX.get(base) + 0.5;
+    return 10000 + ch.charCodeAt(0);
   }
 
   function gojuonCompare(a, b) {
