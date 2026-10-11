@@ -943,7 +943,7 @@ body {
   border: none;
   background: none;
   font-family: inherit;
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text);
   cursor: pointer;
@@ -1021,13 +1021,14 @@ body {
 }
 
 .richtext-btn {
-  width: 26px;
+  min-width: 26px;
   height: 26px;
+  padding: 0 5px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: #fff;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text);
   cursor: pointer;
 }
@@ -1345,9 +1346,10 @@ body {
     width: auto;
   }
 
+  /* 일반 텍스트/레이팅 항목은 모바일에서도 2열 유지, 간격만 좁혀서 공간을 아낀다 */
   .modal-fields,
   .modal-rating-grid {
-    grid-template-columns: 1fr;
+    gap: 8px 10px;
   }
 
   .modal-entry-list {
