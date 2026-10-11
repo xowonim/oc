@@ -948,7 +948,8 @@ body {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 8px;
   border: none;
   background: none;
   font-family: inherit;
@@ -959,9 +960,16 @@ body {
   padding: 4px 0;
 }
 
+/* 제목 옆 세모: 접혀있을 때는 오른쪽을 가리키고, 펼치면 아래를 가리키도록 90도 회전한다 */
 .modal-collapse-arrow {
-  font-size: 11px;
+  display: inline-block;
+  font-size: 10px;
   color: var(--sub-text);
+  transition: transform 0.15s ease;
+}
+
+.modal-collapse-toggle.is-expanded .modal-collapse-arrow {
+  transform: rotate(90deg);
 }
 
 .modal-collapse-body {
