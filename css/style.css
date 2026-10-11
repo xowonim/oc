@@ -932,9 +932,9 @@ body {
 
 /* ---------- 접은 글(펼치기/접기) ---------- */
 .modal-collapse {
-  margin: 24px 0 8px;
+  margin: 18px 0 8px;
   border-top: 1px solid var(--border);
-  padding-top: 12px;
+  padding-top: 16px;
 }
 
 /* 접은글 항목이 바로 연달아 나올 때는 그 사이 구분선을 생략한다 */
@@ -947,7 +947,7 @@ body {
 /* 접은 글이 더 이상 이어지지 않는 마지막 접은 글 아래에는 구분선을 그어 마무리한다 */
 .modal-collapse.modal-collapse-end {
   border-bottom: 1px solid var(--border);
-  padding-bottom: 12px;
+  padding-bottom: 20px;
   margin-bottom: 14px;
 }
 
