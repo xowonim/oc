@@ -425,7 +425,11 @@
           subList.appendChild(li);
         });
 
-        if (subListWrapEl) subListWrapEl.appendChild(subList);
+        // 모바일(가로로 넘기는 탭 줄)에서만 하위 카테고리를 탭 줄 바깥의 별도 영역에 둔다.
+        // 그래야 하위 카테고리 개수에 따라 탭 줄 자체의 높이가 늘어나지 않는다.
+        // 그 외(세로로 나열되는 넓은 화면)에서는 원래대로 선택된 탭 바로 아래에 붙인다.
+        const isMobileNav = window.matchMedia('(max-width: 640px)').matches;
+        if (isMobileNav && subListWrapEl) subListWrapEl.appendChild(subList);
         else item.appendChild(subList);
       }
 
@@ -450,8 +454,12 @@
     const world = activeWorld === 'all' ? null : worldById(activeWorld);
     const filtered = getFiltered();
     const groupField = world ? galleryCategoryField(world) : null;
+    // 神世界(sinsekai)는 세부 카테고리를 고르지 않았을 때도 갤러리 구역 나누기를 유지하고,
+    // 그 외 세계관은 "전체"를 눌렀을 때(하위 필터를 고르지 않았을 때)는 구역 나누기 없이
+    // 그냥 이름순으로 쭉 보여준다.
+    const keepGrouping = world && (world.id === 'sinsekai' || !!activeSubFilter);
 
-    if (world && groupField) {
+    if (world && groupField && keepGrouping) {
       renderGroupedGallery(filtered, world, groupField);
     } else {
       renderFlatGallery(sortForWorld(filtered, world), world);
@@ -2249,4 +2257,15 @@
 
   renderSidebar();
   renderGallery();
+
+  // 화면 크기가 모바일/넓은 화면 기준을 넘나들 때(가로세로 전환 등) 하위 카테고리 위치가
+  // 맞는 쪽으로 다시 그려지도록 한다.
+  let wasMobileNav = window.matchMedia('(max-width: 640px)').matches;
+  window.addEventListener('resize', () => {
+    const isMobileNav = window.matchMedia('(max-width: 640px)').matches;
+    if (isMobileNav !== wasMobileNav) {
+      wasMobileNav = isMobileNav;
+      renderSidebar();
+    }
+  });
 })();
