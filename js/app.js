@@ -928,8 +928,32 @@
     };
   }
 
-  // 굵게/기울임/밑줄 서식을 쓸 수 있는 입력 위젯(긴 글, 접은 글 항목에 사용).
+  // 지금 선택된 글자의 크기를 한 단계 키우거나 줄인다. 선택한 범위가 없으면 아무 일도 하지 않는다.
+  function applyFontSizeStep(editable, step) {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    if (!editable.contains(range.commonAncestorContainer) || range.collapsed) return;
+
+    let baseNode = range.startContainer;
+    baseNode = baseNode.nodeType === 3 ? baseNode.parentElement : baseNode;
+    const currentSize = parseFloat(getComputedStyle(baseNode).fontSize) || 15;
+    const nextSize = Math.max(11, Math.min(32, Math.round(currentSize + step * 2)));
+
+    const span = document.createElement('span');
+    span.style.fontSize = nextSize + 'px';
+    span.appendChild(range.extractContents());
+    range.insertNode(span);
+
+    sel.removeAllRanges();
+    const newRange = document.createRange();
+    newRange.selectNodeContents(span);
+    sel.addRange(newRange);
+  }
+
+  // 굵게/기울임/밑줄/글자 크기 서식을 쓸 수 있는 입력 위젯(긴 글, 접은 글, 일반 텍스트 항목에 사용).
   // contenteditable div를 입력창으로 쓰고, 값은 innerHTML(HTML 형식의 서식 있는 텍스트)로 주고받는다.
+  // 줄바꿈은 contenteditable 기본 동작으로 이미 가능하다(Enter 키).
   function mountRichText(container, key, initialHtml) {
     const wrap = document.createElement('div');
     wrap.className = 'richtext-wrap';
@@ -940,6 +964,8 @@
       <button type="button" class="richtext-btn" data-cmd="bold" title="굵게"><b>B</b></button>
       <button type="button" class="richtext-btn" data-cmd="italic" title="기울임"><i>I</i></button>
       <button type="button" class="richtext-btn" data-cmd="underline" title="밑줄"><u>U</u></button>
+      <button type="button" class="richtext-btn" data-cmd="fontUp" title="글자 크게">A+</button>
+      <button type="button" class="richtext-btn" data-cmd="fontDown" title="글자 작게">A-</button>
     `;
 
     const editable = document.createElement('div');
@@ -963,7 +989,10 @@
       btn.addEventListener('mousedown', (e) => e.preventDefault());
       btn.addEventListener('click', () => {
         editable.focus();
-        document.execCommand(btn.getAttribute('data-cmd'));
+        const cmd = btn.getAttribute('data-cmd');
+        if (cmd === 'fontUp') applyFontSizeStep(editable, 1);
+        else if (cmd === 'fontDown') applyFontSizeStep(editable, -1);
+        else document.execCommand(cmd);
       });
     });
 
@@ -1277,7 +1306,7 @@
         roleRow.appendChild(galChk);
         roleRow.appendChild(multiChk);
         label.appendChild(roleRow);
-      } else {
+      } else if (f.core) {
         const valInput = document.createElement('input');
         valInput.type = 'text';
         valInput.className = 'form-input';
@@ -1285,39 +1314,40 @@
         valInput.value = rawVal || '';
         label.appendChild(valInput);
 
-        if (f.core) {
-          // 이름(필수 항목) 자체에 바로 붙는 정렬 옵션: 이 세계관 캐릭터들을
-          // 이름 가나다순이 아니라 아이우에오(히라가나 읽는 순서)로 정렬한다.
-          const roleRow = document.createElement('div');
-          roleRow.className = 'field-category-roles';
-          const gojuonChk = document.createElement('label');
-          gojuonChk.className = 'field-category-role-chk';
-          gojuonChk.innerHTML = `<input type="checkbox" ${w.sortByGojuon ? 'checked' : ''}> 이름을 아이우에오(히라가나) 순으로 정렬`;
-          gojuonChk.querySelector('input').addEventListener('change', async (e) => {
-            const checked = e.target.checked;
-            const updated = await toggleWorldFlag(w, 'sortByGojuon', checked);
-            if (!updated) e.target.checked = !checked;
-          });
-          roleRow.appendChild(gojuonChk);
+        // 이름(필수 항목) 자체에 바로 붙는 정렬 옵션: 이 세계관 캐릭터들을
+        // 이름 가나다순이 아니라 아이우에오(히라가나 읽는 순서)로 정렬한다.
+        const roleRow = document.createElement('div');
+        roleRow.className = 'field-category-roles';
+        const gojuonChk = document.createElement('label');
+        gojuonChk.className = 'field-category-role-chk';
+        gojuonChk.innerHTML = `<input type="checkbox" ${w.sortByGojuon ? 'checked' : ''}> 이름을 아이우에오(히라가나) 순으로 정렬`;
+        gojuonChk.querySelector('input').addEventListener('change', async (e) => {
+          const checked = e.target.checked;
+          const updated = await toggleWorldFlag(w, 'sortByGojuon', checked);
+          if (!updated) e.target.checked = !checked;
+        });
+        roleRow.appendChild(gojuonChk);
 
-          // ETC처럼 세계관 하나에 출처가 다 제각각인 캐릭터들이 섞여 있을 때를 위한 옵션.
-          // 켜두면, 이 템플릿의 공통 항목 말고 "이 캐릭터만의 항목"을 캐릭터마다 자유롭게
-          // 추가할 수 있는 칸이 생성/수정 창 아래쪽에 따로 생긴다.
-          const perCharChk = document.createElement('label');
-          perCharChk.className = 'field-category-role-chk';
-          perCharChk.innerHTML = `<input type="checkbox" ${w.perCharacterFields ? 'checked' : ''}> 캐릭터마다 다른 항목 추가 허용 (예: ETC)`;
-          perCharChk.querySelector('input').addEventListener('change', async (e) => {
-            const checked = e.target.checked;
-            const updated = await toggleWorldFlag(w, 'perCharacterFields', checked);
-            if (!updated) {
-              e.target.checked = !checked;
-            } else if (typeof window.__refreshCustomFieldsSection === 'function') {
-              window.__refreshCustomFieldsSection(updated);
-            }
-          });
-          roleRow.appendChild(perCharChk);
-          label.appendChild(roleRow);
-        }
+        // ETC처럼 세계관 하나에 출처가 다 제각각인 캐릭터들이 섞여 있을 때를 위한 옵션.
+        // 켜두면, 이 템플릿의 공통 항목 말고 "이 캐릭터만의 항목"을 캐릭터마다 자유롭게
+        // 추가할 수 있는 칸이 생성/수정 창 아래쪽에 따로 생긴다.
+        const perCharChk = document.createElement('label');
+        perCharChk.className = 'field-category-role-chk';
+        perCharChk.innerHTML = `<input type="checkbox" ${w.perCharacterFields ? 'checked' : ''}> 캐릭터마다 다른 항목 추가 허용`;
+        perCharChk.querySelector('input').addEventListener('change', async (e) => {
+          const checked = e.target.checked;
+          const updated = await toggleWorldFlag(w, 'perCharacterFields', checked);
+          if (!updated) {
+            e.target.checked = !checked;
+          } else if (typeof window.__refreshCustomFieldsSection === 'function') {
+            window.__refreshCustomFieldsSection(updated);
+          }
+        });
+        roleRow.appendChild(perCharChk);
+        label.appendChild(roleRow);
+      } else {
+        // 일반 텍스트 입력도 굵게/기울임/밑줄/글자 크기 서식과 줄바꿈을 쓸 수 있게 서식 있는 입력창으로.
+        mountRichText(label, f.key, rawVal);
       }
       row.appendChild(label);
 
@@ -1431,12 +1461,7 @@
         label.appendChild(c);
         currentFieldWidgets[f.key] = mountEntryListInput(c, Array.isArray(rawVal) ? rawVal : []);
       } else {
-        const valInput = document.createElement('input');
-        valInput.type = 'text';
-        valInput.className = 'form-input';
-        valInput.setAttribute('data-field-key', f.key);
-        valInput.value = rawVal || '';
-        label.appendChild(valInput);
+        mountRichText(label, f.key, rawVal);
       }
       row.appendChild(label);
 
@@ -1561,7 +1586,7 @@
         // 항목을 추가/삭제하는 등 폼이 다시 그려지면 그 이미지 선택은 다시 해야 한다
         // (캐릭터 이미지(1)/(2) 칸도 원래 같은 제약이 있다).
         snap[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getEntries() : [];
-      } else if (f.type === 'textarea' || f.type === 'collapse') {
+      } else if (f.type === 'textarea' || f.type === 'collapse' || f.type === 'text') {
         const rt = document.querySelector(`.richtext-editable[data-field-key="${f.key}"]`);
         snap[f.key] = rt ? rt.innerHTML : '';
       } else {
@@ -2047,7 +2072,7 @@
       } else if (f.type === 'entries') {
         const list = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getEntries() : [];
         obj.fields[f.key] = list.map((e) => ({ id: e.id, name: e.name || '', desc: e.desc || '', image: e.image || null }));
-      } else if (f.type === 'textarea' || f.type === 'collapse') {
+      } else if (f.type === 'textarea' || f.type === 'collapse' || f.type === 'text') {
         const rt = document.querySelector(`.richtext-editable[data-field-key="${f.key}"]`);
         obj.fields[f.key] = rt ? rt.innerHTML.trim() : '';
       } else if (f.type === 'category') {
