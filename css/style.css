@@ -415,6 +415,7 @@ body {
 .modal-field-label {
   width: 96px;
   flex-shrink: 0;
+  font-size: 13px;
   color: var(--sub-text);
 }
 
