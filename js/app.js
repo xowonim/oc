@@ -607,7 +607,14 @@
     let collapseCounter = 0;
     let prevSectionType = null;
 
-    orderedFields.forEach((f) => {
+    // 접은 글 항목들이 전부 끝나는 지점(더 이상 접은 글이 이어지지 않는 마지막 접은 글)에
+    // 가로선을 그어 마무리해준다. 접은 글끼리 바로 이어질 때 사이사이 선을 생략하는 것과는 별개.
+    let lastCollapseIdx = -1;
+    orderedFields.forEach((f, i) => {
+      if (f.type === 'collapse') lastCollapseIdx = i;
+    });
+
+    orderedFields.forEach((f, fieldIdx) => {
       const raw = fieldValue(c, f.key);
       if (f.type === 'textarea') {
         sectionsHtml += rowsBlockHtml(pendingRows);
@@ -624,10 +631,11 @@
         sectionsHtml += rowsBlockHtml(pendingRows);
         pendingRows = [];
         const noLine = prevSectionType === 'collapse' && !hadPending;
+        const isLastCollapse = fieldIdx === lastCollapseIdx;
         collapseCounter += 1;
         const cid = 'modalCollapse' + collapseCounter;
         sectionsHtml += `
-          <div class="modal-collapse${noLine ? ' modal-collapse-noline' : ''}">
+          <div class="modal-collapse${noLine ? ' modal-collapse-noline' : ''}${isLastCollapse ? ' modal-collapse-end' : ''}">
             <button type="button" class="modal-collapse-toggle" data-target="${cid}">
               <span class="modal-collapse-arrow">▶</span><span>${f.label}</span>
             </button>
