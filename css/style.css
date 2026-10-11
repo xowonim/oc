@@ -944,6 +944,13 @@ body {
   padding-top: 0;
 }
 
+/* 접은 글이 더 이상 이어지지 않는 마지막 접은 글 아래에는 구분선을 그어 마무리한다 */
+.modal-collapse.modal-collapse-end {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+
 .modal-collapse-toggle {
   width: 100%;
   display: flex;
@@ -964,7 +971,7 @@ body {
 .modal-collapse-arrow {
   display: inline-block;
   font-size: 10px;
-  color: var(--sub-text);
+  color: var(--text);
   transition: transform 0.15s ease;
 }
 
