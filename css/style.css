@@ -398,9 +398,9 @@ body {
 }
 
 .modal-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 20px;
   margin-top: 26px;
 }
 
@@ -800,6 +800,12 @@ body {
   margin-bottom: 14px;
 }
 
+.form-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 22px 0 2px;
+}
+
 .field-manager-row {
   display: flex;
   align-items: flex-end;
@@ -922,6 +928,13 @@ body {
   padding-top: 12px;
 }
 
+/* 접은글 항목이 바로 연달아 나올 때는 그 사이 구분선을 생략한다 */
+.modal-collapse.modal-collapse-noline {
+  margin-top: 4px;
+  border-top: none;
+  padding-top: 0;
+}
+
 .modal-collapse-toggle {
   width: 100%;
   display: flex;
@@ -930,7 +943,7 @@ body {
   border: none;
   background: none;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text);
   cursor: pointer;
@@ -1246,13 +1259,20 @@ body {
     font-size: 13px;
   }
 
-  /* 세부 필터(소속/거주지 등) 목록도 세로 목록 대신 줄바꿈되는 칩 형태로 */
+  /* 세부 필터(소속/거주지 등) 목록도 세로 목록 대신 한 줄짜리 가로 스크롤 칩 형태로.
+     (줄바꿈을 쓰면 하위 카테고리 개수에 따라 화면 높이가 계속 늘어나버린다) */
   .sub-list {
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     padding-left: 0;
     gap: 6px;
     margin-top: 8px;
+  }
+
+  .sub-item {
+    flex: 0 0 auto;
   }
 
   .sub-item {
@@ -1325,6 +1345,7 @@ body {
     width: auto;
   }
 
+  .modal-fields,
   .modal-rating-grid {
     grid-template-columns: 1fr;
   }
