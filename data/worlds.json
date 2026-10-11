@@ -392,6 +392,7 @@
         "label": "소유 포켓몬",
         "type": "entries"
       }
-    ]
+    ],
+    "perCharacterFields": true
   }
 ]
