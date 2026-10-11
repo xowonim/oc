@@ -24,6 +24,7 @@
     </svg>`;
 
   const navListEl = document.getElementById('navList');
+  const subListWrapEl = document.getElementById('subListWrap');
   const galleryEl = document.getElementById('gallery');
   const logoHomeEl = document.getElementById('logoHome');
   const settingsBtnEl = document.getElementById('settingsBtn');
@@ -372,6 +373,7 @@
   // ---------- 사이드바 ----------
   function renderSidebar() {
     navListEl.innerHTML = '';
+    if (subListWrapEl) subListWrapEl.innerHTML = '';
     const entries = [{ id: 'all', name: 'All', shortName: 'All' }, ...worlds];
 
     entries.forEach((entry) => {
@@ -423,7 +425,8 @@
           subList.appendChild(li);
         });
 
-        item.appendChild(subList);
+        if (subListWrapEl) subListWrapEl.appendChild(subList);
+        else item.appendChild(subList);
       }
 
       navListEl.appendChild(item);
