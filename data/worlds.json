@@ -266,7 +266,8 @@
         "label": "체력",
         "type": "rating"
       }
-    ]
+    ],
+    "sortByGojuon": true
   },
   {
     "id": "w_1790458917947",
