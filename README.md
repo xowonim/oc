@@ -9,17 +9,17 @@
 ### ① 다운로드 받을 파일
 - index.html : 사이트 화면 구조
 - css/style.css : 레이아웃 ${\color{gray}(깃허브\space 저장소에\space 올리실\space 때,\space css\space 폴더를\space 만들어서\space 그\space 안에\space 넣으셔야\space 돼요..)}$
-- js/app.js : 사이트 작동 데이터 (“,js 폴더를 만들어서 그 안에 넣으셔야 돼요..)
-- data/world.json : 세계관 구성 정보 (“, data 폴더를 만들어서 그 안에 넣으셔야 돼요..)
+- js/app.js : 사이트 작동 데이터 ${\color{gray}(얘는\space js\space 폴더를\space 만들어서\space 그\space 안에\space 넣으셔야\space 돼요..)}$
+- data/world.json : 세계관 구성 정보 ${\color{gray}(얘는\space data\space 폴더를\space 만들어서\space 그\space 안에\space 넣으셔야\space 돼요..)}$
 - data/characters.fallback.json : github API 호출에 실패했을 때, 대신 보여줄 빈 캐릭터 목록
-- data/character/_templet.json : 캐릭터 템플릿 (data 폴더 안에 character 폴더를 만들어서 그 안에 넣으셔야 돼요.. 이 폴더에 캐릭터들이 저장됨)
-- REDME.md : 이 파일입니다.. 있으면 도움 될 걸요? (아마도..)
+- data/character/_templet.json : 캐릭터 템플릿 ${\color{gray}(data\space 폴더\space 안에\space character\space 폴더를\space 만들어서\space 그\space 안에\space 넣으셔야\space 돼요..\space 이\space 폴더에\space 캐릭터들이\space 저장됨)}$
+- REDME.md : 이 파일입니다.. 있으면 도움 될 걸요? ${\color{gray}(아마도..)}$
 
 ### ② 페이지 생성
 1. 깃허브 로그인 후, 오른쪽 위 + 버튼 → ‘New repository‘ 클릭 <br>
-   ↳ Repository name : 저장소 이름 (영문) & Public 체크 후, Create repository (퍼블릭 안 하면!! 안 돼요..) <br>
+   ↳ Repository name : 저장소 이름 (영문) & Public 체크 후, Create repository ${\color{gray}(퍼블릭\space 안\space 하면!!\space 안 돼요..)}$ <br>
 2. ‘Code’ 창에서 Add file → Upload files 클릭 <br>
-   ↳ ①에 적힌 대로 폴더 생성 및 파일 업로드 (**index.html은 폴더 생성하면 절대 XXX..** 그냥 첫 화면에 업로드하세요!!) <br>
+   ↳ ①에 적힌 대로 폴더 생성 및 파일 업로드 ${\color{gray}(**index.html은\space 폴더\space 생성하면\space 절대\space XXX..**\space 그냥\space 첫\space 화면에\space 업로드하세요!!)}$ <br>
 3. js/app.js → 연필 아이콘(편집) 클릭 <br>
 ```
 const GITHUB_OWNER = ‘xowonim’; → 본인 github ID로 변경
@@ -27,7 +27,7 @@ const GITHUB_REPO = ‘oc’; -> 본인 저장소 이름으로 변경
 ```
 4. 저장소 상단 메뉴 Settings → 왼쪽 메뉴에서 Pages 클릭 <br>
 5. Source → Depoly from a branch & Branch → main/**(root)** 설정 후 Save 클릭 <br>
-6. 1~2분 정도 기다린 후에 새로고침하면 사이트가 만들어집니다 와~ <br>
+6. 1~2분 정도 기다린 후에 새로고침하면 사이트가 만들어집니다 와! <br>
 
 
 ## 처음 한 번만 하면 되는 설정
