@@ -571,69 +571,62 @@
     // 오는 접은글/긴글 섹션의 윗줄과 겹쳐서 줄이 두 개로 보이는 문제를 없앤다.
     function rowsBlockHtml(rows) {
       if (rows.length === 0) return '';
+      // 일반 텍스트 항목도 레이팅 항목처럼 2열로 나란히 보여준다(짝이 안 맞는
+      // 마지막 한 줄은 그냥 혼자 한 칸만 차지한다).
+      const totalGridRows = Math.ceil(rows.length / 2);
       let html = '<div class="modal-fields">';
-      let i = 0;
-      while (i < rows.length) {
-        if (rows[i].type === 'rating') {
-          const group = [];
-          while (i < rows.length && rows[i].type === 'rating') {
-            group.push(rows[i]);
-            i += 1;
-          }
-          const isGroupAtEnd = i === rows.length;
-          const totalGridRows = Math.ceil(group.length / 2);
-          html += '<div class="modal-rating-grid">';
-          group.forEach((r, idx) => {
-            const gridRowIdx = Math.floor(idx / 2);
-            const noBorder = isGroupAtEnd && gridRowIdx === totalGridRows - 1;
-            html += `
-              <div class="modal-rating-row${noBorder ? ' no-border' : ''}">
-                <div class="modal-field-label">${r.label}</div>
-                <div class="modal-field-value">${r.value}</div>
-              </div>
-            `;
-          });
-          html += '</div>';
-        } else {
-          const isLast = i === rows.length - 1;
-          html += `
-            <div class="modal-field-row${isLast ? ' no-border' : ''}">
-              <div class="modal-field-label">${rows[i].label}</div>
-              <div class="modal-field-value">${rows[i].value}</div>
-            </div>
-          `;
-          i += 1;
-        }
-      }
+      rows.forEach((r, idx) => {
+        const gridRowIdx = Math.floor(idx / 2);
+        const isLastRow = gridRowIdx === totalGridRows - 1;
+        html += `
+          <div class="modal-field-row${isLastRow ? ' no-border' : ''}">
+            <div class="modal-field-label">${r.label}</div>
+            <div class="modal-field-value">${r.value}</div>
+          </div>
+        `;
+      });
       html += '</div>';
       return html;
     }
 
-    const orderedFields = world && world.fields ? world.fields.filter((f) => f.key !== 'name') : [];
+    // 템플릿 공통 항목 뒤에, 이 캐릭터만 따로 가지고 있는 항목(customFields, ETC처럼
+    // "캐릭터마다 다른 항목 추가 허용"이 켜진 템플릿에서 생긴 것)을 이어서 보여준다.
+    const orderedFields = [
+      ...(world && world.fields ? world.fields.filter((f) => f.key !== 'name') : []),
+      ...(Array.isArray(c.customFields) ? c.customFields : []),
+    ];
     let sectionsHtml = '';
     let collapseCounter = 0;
+    let prevSectionType = null;
 
     orderedFields.forEach((f) => {
       const raw = fieldValue(c, f.key);
       if (f.type === 'textarea') {
         sectionsHtml += rowsBlockHtml(pendingRows);
         pendingRows = [];
+        prevSectionType = 'textarea';
         if (raw) {
           sectionsHtml += `<h3 class="modal-section-title">${f.label}</h3><div class="modal-bio">${raw}</div>`;
         }
       } else if (f.type === 'collapse') {
+        // 접은글 항목이 바로 이어서 여러 개 나올 때는, 그 사이사이에 매번 구분선을
+        // 그으면 선이 너무 자주 겹쳐 보이므로, 앞에도 접은글이 곧바로 있었을 때는
+        // (그 사이에 다른 항목이 끼어있지 않았다면) 윗줄을 생략한다.
+        const hadPending = pendingRows.length > 0;
         sectionsHtml += rowsBlockHtml(pendingRows);
         pendingRows = [];
+        const noLine = prevSectionType === 'collapse' && !hadPending;
         collapseCounter += 1;
         const cid = 'modalCollapse' + collapseCounter;
         sectionsHtml += `
-          <div class="modal-collapse">
+          <div class="modal-collapse${noLine ? ' modal-collapse-noline' : ''}">
             <button type="button" class="modal-collapse-toggle" data-target="${cid}">
               <span>${f.label}</span><span class="modal-collapse-arrow">▾ 펼치기</span>
             </button>
             <div class="modal-collapse-body" id="${cid}" hidden>${raw || '-'}</div>
           </div>
         `;
+        prevSectionType = 'collapse';
       } else if (f.type === 'rating') {
         const n = Math.max(0, Math.min(5, Number(raw) || 0));
         const stars = '★'.repeat(n) + '☆'.repeat(5 - n);
@@ -641,6 +634,7 @@
       } else if (f.type === 'entries') {
         sectionsHtml += rowsBlockHtml(pendingRows);
         pendingRows = [];
+        prevSectionType = 'entries';
         const list = Array.isArray(raw) ? raw : [];
         if (list.length > 0) {
           const itemsHtml = list
@@ -672,16 +666,17 @@
     sectionsHtml += rowsBlockHtml(pendingRows);
 
     const profileImg = c.profileImage || c.image;
+    // 수정하기/캐릭터 삭제는 저장용 개인 토큰을 등록해둔 사람(=실제 운영자)한테만 보이게 한다.
+    // 그냥 구경하러 온 사람 화면에는 이 버튼들이 아예 나타나지 않는다.
+    const canEdit = !!getToken();
 
     modalBody.innerHTML = `
       <div class="modal-image-wrap" id="modalImageWrap"></div>
       <p class="modal-name">${c.name}</p>
       <span class="modal-world-tag" style="background:${worldColor}">${world ? world.name : ''}</span>
       ${sectionsHtml}
-      <button class="modal-edit-btn" id="modalEditBtn">수정하기</button>
-      <div class="modal-delete-row">
-        <button class="modal-delete-btn" id="modalDeleteBtn">캐릭터 삭제</button>
-      </div>
+      ${canEdit ? '<button class="modal-edit-btn" id="modalEditBtn">수정하기</button>' : ''}
+      ${canEdit ? `<div class="modal-delete-row"><button class="modal-delete-btn" id="modalDeleteBtn">캐릭터 삭제</button></div>` : ''}
     `;
 
     modalBody.querySelectorAll('.modal-collapse-toggle').forEach((btn) => {
@@ -713,13 +708,15 @@
     }
 
     const groupField = world ? galleryCategoryField(world) : null;
-    document.getElementById('modalEditBtn').addEventListener('click', () => {
-      closeModal();
-      openEditForm(c, world, groupField ? fieldValue(c, groupField.key) : null);
-    });
-    document.getElementById('modalDeleteBtn').addEventListener('click', () => {
-      deleteCharacter(c);
-    });
+    if (canEdit) {
+      document.getElementById('modalEditBtn').addEventListener('click', () => {
+        closeModal();
+        openEditForm(c, world, groupField ? fieldValue(c, groupField.key) : null);
+      });
+      document.getElementById('modalDeleteBtn').addEventListener('click', () => {
+        deleteCharacter(c);
+      });
+    }
 
     modalOverlay.classList.add('is-open');
   }
@@ -731,6 +728,13 @@
   modalClose.addEventListener('click', closeModal);
   modalOverlay.addEventListener('click', (e) => {
     if (e.target === modalOverlay) closeModal();
+  });
+  // 모바일에서는 프로필 창이 화면을 꽉 채워서 뒷배경(오버레이)을 누르기 어려우니,
+  // 수정하기/삭제/접은글 펼치기 같은 버튼이 아닌 곳이면 카드 안쪽을 눌러도 그냥 닫히게 한다.
+  const MODAL_TAP_CLOSE_EXCLUDE = '.modal-collapse-toggle, .modal-edit-btn, .modal-delete-btn, .modal-close, a';
+  modalBody.addEventListener('click', (e) => {
+    if (e.target.closest(MODAL_TAP_CLOSE_EXCLUDE)) return;
+    closeModal();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -1080,6 +1084,10 @@
   // { image: {blob, ext}, profileImage: {blob, ext} } 형태. 자르지 않고 원본 그대로
   // 쓰기로 하면 여기에 값이 안 채워지고, 그럴 때는 파일 입력창의 원본 파일을 그대로 쓴다.
   let pendingCroppedFiles = {};
+  // "캐릭터마다 다른 항목 추가 허용"이 켜진 템플릿(예: ETC)에서, 지금 열려 있는
+  // 캐릭터 생성/수정 창에서만 쓰이는 이 캐릭터 전용 항목 정의 목록. 템플릿(worlds.json)에는
+  // 저장되지 않고, 이 캐릭터의 JSON 파일에 customFields로 그대로 저장된다.
+  let currentCustomFields = [];
 
   function renderDynamicSection(w, existing, presetSubcategory) {
     const container = document.getElementById('dynamicFieldsContainer');
@@ -1277,14 +1285,37 @@
         valInput.value = rawVal || '';
         label.appendChild(valInput);
 
-        if (!f.core) {
+        if (f.core) {
+          // 이름(필수 항목) 자체에 바로 붙는 정렬 옵션: 이 세계관 캐릭터들을
+          // 이름 가나다순이 아니라 아이우에오(히라가나 읽는 순서)로 정렬한다.
           const roleRow = document.createElement('div');
           roleRow.className = 'field-category-roles';
-          const sortChk = document.createElement('label');
-          sortChk.className = 'field-category-role-chk';
-          sortChk.innerHTML = `<input type="checkbox" ${f.sortKey ? 'checked' : ''}> 정렬 기준으로 쓰기 (예: 히라가나 읽기)`;
-          sortChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'sortKey', e.target.checked));
-          roleRow.appendChild(sortChk);
+          const gojuonChk = document.createElement('label');
+          gojuonChk.className = 'field-category-role-chk';
+          gojuonChk.innerHTML = `<input type="checkbox" ${w.sortByGojuon ? 'checked' : ''}> 이름을 아이우에오(히라가나) 순으로 정렬`;
+          gojuonChk.querySelector('input').addEventListener('change', async (e) => {
+            const checked = e.target.checked;
+            const updated = await toggleWorldFlag(w, 'sortByGojuon', checked);
+            if (!updated) e.target.checked = !checked;
+          });
+          roleRow.appendChild(gojuonChk);
+
+          // ETC처럼 세계관 하나에 출처가 다 제각각인 캐릭터들이 섞여 있을 때를 위한 옵션.
+          // 켜두면, 이 템플릿의 공통 항목 말고 "이 캐릭터만의 항목"을 캐릭터마다 자유롭게
+          // 추가할 수 있는 칸이 생성/수정 창 아래쪽에 따로 생긴다.
+          const perCharChk = document.createElement('label');
+          perCharChk.className = 'field-category-role-chk';
+          perCharChk.innerHTML = `<input type="checkbox" ${w.perCharacterFields ? 'checked' : ''}> 캐릭터마다 다른 항목 추가 허용 (예: ETC)`;
+          perCharChk.querySelector('input').addEventListener('change', async (e) => {
+            const checked = e.target.checked;
+            const updated = await toggleWorldFlag(w, 'perCharacterFields', checked);
+            if (!updated) {
+              e.target.checked = !checked;
+            } else if (typeof window.__refreshCustomFieldsSection === 'function') {
+              window.__refreshCustomFieldsSection(updated);
+            }
+          });
+          roleRow.appendChild(perCharChk);
           label.appendChild(roleRow);
         }
       }
@@ -1331,6 +1362,122 @@
       const typeVal = document.getElementById('newFieldType').value;
       if (!labelVal) return;
       addFieldToWorld(w, labelVal, typeVal);
+    });
+  }
+
+  // ETC처럼 세계관 하나에 출처가 다 제각각인 캐릭터들이 섞여 있을 때를 위한 섹션.
+  // 템플릿(worlds.json)에는 손대지 않고, 지금 이 캐릭터 하나한테만 적용되는 항목을
+  // 자유롭게 추가/삭제/이름변경 할 수 있다 — 저장은 "저장하기"를 눌렀을 때 이 캐릭터의
+  // JSON 파일 안에 customFields로 같이 담겨서 이뤄진다.
+  function renderCustomFieldsSection(w, existingValues) {
+    const container = document.getElementById('customFieldsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!w || !w.perCharacterFields) return;
+
+    const header = document.createElement('h3');
+    header.className = 'form-section-title';
+    header.textContent = '이 캐릭터만의 항목';
+    container.appendChild(header);
+    const hint = document.createElement('p');
+    hint.className = 'form-hint';
+    hint.textContent = '템플릿 공통 항목 말고, 이 캐릭터한테만 필요한 항목을 자유롭게 추가할 수 있어요.';
+    container.appendChild(hint);
+
+    const fieldMgr = document.createElement('div');
+    fieldMgr.className = 'field-manager';
+    const typeBadgeText = { tags: '태그', textarea: '긴 글', collapse: '접은 글', rating: '레이팅', entries: '엔트리' };
+
+    currentCustomFields.forEach((f) => {
+      const rawVal = existingValues ? existingValues[f.key] : null;
+      const row = document.createElement('div');
+      row.className = 'field-manager-row';
+
+      const label = document.createElement('div');
+      label.className = 'form-label field-manager-label';
+
+      const labelEditRow = document.createElement('div');
+      labelEditRow.className = 'field-manager-label-edit-row';
+      const labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.className = 'field-manager-label-edit';
+      labelInput.value = f.label;
+      labelInput.addEventListener('change', () => {
+        const v = labelInput.value.trim();
+        f.label = v || f.label;
+        labelInput.value = f.label;
+      });
+      labelEditRow.appendChild(labelInput);
+      if (typeBadgeText[f.type]) {
+        const badge = document.createElement('span');
+        badge.className = 'field-type-tag';
+        badge.textContent = typeBadgeText[f.type];
+        labelEditRow.appendChild(badge);
+      }
+      label.appendChild(labelEditRow);
+
+      if (f.type === 'tags') {
+        const c = document.createElement('div');
+        label.appendChild(c);
+        currentFieldWidgets[f.key] = mountTagInput(c, rawVal);
+      } else if (f.type === 'textarea' || f.type === 'collapse') {
+        mountRichText(label, f.key, rawVal);
+      } else if (f.type === 'rating') {
+        const c = document.createElement('div');
+        label.appendChild(c);
+        currentFieldWidgets[f.key] = mountRatingInput(c, rawVal);
+      } else if (f.type === 'entries') {
+        const c = document.createElement('div');
+        label.appendChild(c);
+        currentFieldWidgets[f.key] = mountEntryListInput(c, Array.isArray(rawVal) ? rawVal : []);
+      } else {
+        const valInput = document.createElement('input');
+        valInput.type = 'text';
+        valInput.className = 'form-input';
+        valInput.setAttribute('data-field-key', f.key);
+        valInput.value = rawVal || '';
+        label.appendChild(valInput);
+      }
+      row.appendChild(label);
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'field-manager-del';
+      delBtn.textContent = '항목 삭제';
+      delBtn.addEventListener('click', () => {
+        const snap = snapshotFieldValues(currentCustomFields);
+        currentCustomFields = currentCustomFields.filter((x) => x.key !== f.key);
+        renderCustomFieldsSection(w, { ...(existingValues || {}), ...snap });
+      });
+      row.appendChild(delBtn);
+
+      fieldMgr.appendChild(row);
+    });
+
+    const addRow = document.createElement('div');
+    addRow.className = 'field-manager-add';
+    addRow.innerHTML = `
+      <input type="text" class="form-input" id="newCustomFieldLabel" placeholder="새 항목 이름 (예: 포켓몬 타입)">
+      <select class="form-input" id="newCustomFieldType">
+        <option value="text">텍스트 입력</option>
+        <option value="tags">태그 입력</option>
+        <option value="textarea">긴 글(소개·성격 등)</option>
+        <option value="collapse">접은 글(눌러야 펼쳐짐)</option>
+        <option value="rating">레이팅(별점)</option>
+        <option value="entries">엔트리 목록(이미지+이름+설명)</option>
+      </select>
+      <button type="button" class="field-manager-add-btn" id="newCustomFieldBtn">+ 이 캐릭터에 항목 추가</button>
+    `;
+    fieldMgr.appendChild(addRow);
+    container.appendChild(fieldMgr);
+
+    document.getElementById('newCustomFieldBtn').addEventListener('click', () => {
+      const labelVal = document.getElementById('newCustomFieldLabel').value.trim();
+      const typeVal = document.getElementById('newCustomFieldType').value;
+      if (!labelVal) return;
+      const snap = snapshotFieldValues(currentCustomFields);
+      currentCustomFields.push({ key: 'cf_' + Date.now() + Math.random().toString(36).slice(2, 6), label: labelVal, type: typeVal });
+      renderCustomFieldsSection(w, { ...(existingValues || {}), ...snap });
     });
   }
 
@@ -1399,6 +1546,32 @@
     return run;
   }
 
+  // 항목 하나짜리 값을 지금 화면(DOM)에서 그대로 읽어오는 공통 로직. 템플릿 공통 항목
+  // (world.fields)이든, 캐릭터 전용 항목(currentCustomFields)이든 똑같이 쓸 수 있다.
+  function snapshotFieldValues(fieldsArr) {
+    const snap = {};
+    (fieldsArr || []).forEach((f) => {
+      if (f.key === 'name') return;
+      if (f.type === 'tags' || (f.type === 'category' && f.multi)) {
+        snap[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
+      } else if (f.type === 'rating') {
+        snap[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValue() : 0;
+      } else if (f.type === 'entries') {
+        // 참고: 엔트리 안에서 새로 고른(아직 저장 안 된) 이미지 파일은 스냅샷에 담을 수 없어서
+        // 항목을 추가/삭제하는 등 폼이 다시 그려지면 그 이미지 선택은 다시 해야 한다
+        // (캐릭터 이미지(1)/(2) 칸도 원래 같은 제약이 있다).
+        snap[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getEntries() : [];
+      } else if (f.type === 'textarea' || f.type === 'collapse') {
+        const rt = document.querySelector(`.richtext-editable[data-field-key="${f.key}"]`);
+        snap[f.key] = rt ? rt.innerHTML : '';
+      } else {
+        const inp = document.querySelector(`[data-field-key="${f.key}"]`);
+        snap[f.key] = inp ? inp.value : '';
+      }
+    });
+    return snap;
+  }
+
   // 항목을 추가/삭제/순서변경 하면서 다시 그릴 때, 이미 폼에 입력해둔 값을 잃지 않도록
   // 현재 화면에 있는 값을 먼저 스냅샷으로 떠 둔다.
   function snapshotFormValues(world) {
@@ -1410,25 +1583,8 @@
       snap.grade = g && g.value !== '' ? Number(g.value) : null;
       snap.class = c ? c.value : null;
     }
-    (world.fields || []).forEach((f) => {
-      if (f.key === 'name') return;
-      if (f.type === 'tags' || (f.type === 'category' && f.multi)) {
-        snap.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
-      } else if (f.type === 'rating') {
-        snap.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValue() : 0;
-      } else if (f.type === 'entries') {
-        // 참고: 엔트리 안에서 새로 고른(아직 저장 안 된) 이미지 파일은 스냅샷에 담을 수 없어서
-        // 항목을 추가/삭제하는 등 폼이 다시 그려지면 그 이미지 선택은 다시 해야 한다
-        // (캐릭터 이미지(1)/(2) 칸도 원래 같은 제약이 있다).
-        snap.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getEntries() : [];
-      } else if (f.type === 'textarea' || f.type === 'collapse') {
-        const rt = document.querySelector(`.richtext-editable[data-field-key="${f.key}"]`);
-        snap.fields[f.key] = rt ? rt.innerHTML : '';
-      } else {
-        const inp = document.querySelector(`[data-field-key="${f.key}"]`);
-        snap.fields[f.key] = inp ? inp.value : '';
-      }
-    });
+    Object.assign(snap.fields, snapshotFieldValues(world.fields || []));
+    Object.assign(snap.fields, snapshotFieldValues(currentCustomFields));
     return snap;
   }
 
@@ -1610,9 +1766,6 @@
           <button type="button" class="template-mini-btn danger" id="templateDelBtn">템플릿 삭제</button>
           <button type="button" class="template-mini-btn" id="templateMoveUpBtn" title="탭 순서를 앞으로">▲ 순서</button>
           <button type="button" class="template-mini-btn" id="templateMoveDownBtn" title="탭 순서를 뒤로">▼ 순서</button>
-          <label class="template-mini-btn" id="templateGojuonLabel" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">
-            <input type="checkbox" id="templateGojuonChk" ${w.sortByGojuon ? 'checked' : ''}> 이름 아이우에오 순 정렬
-          </label>
         </div>
         <div class="image-slot-row">
           <label class="form-label">이미지 삽입(1) — 갤러리 카드용
@@ -1627,6 +1780,7 @@
       </div>
 
       <div id="dynamicFieldsContainer"></div>
+      <div id="customFieldsContainer"></div>
 
       <p class="form-error" id="formError"></p>
       <button class="form-submit" id="formSubmit">${isEdit ? '저장하기' : '만들기'}</button>
@@ -1637,6 +1791,16 @@
     `;
 
     renderDynamicSection(w, existing, presetSubcategory);
+
+    // 이 캐릭터만의 항목(customFields)은 지금 고른 세계관이 이 캐릭터가 원래 속한
+    // 세계관과 같을 때만(=수정 중일 때) 기존 값을 그대로 가져오고, 그 외에는 빈 목록에서 시작한다.
+    currentCustomFields = isEdit && existing && existing.world === w.id && Array.isArray(existing.customFields)
+      ? JSON.parse(JSON.stringify(existing.customFields))
+      : [];
+    renderCustomFieldsSection(w, isEdit ? existing.fields : null);
+    window.__refreshCustomFieldsSection = (updatedWorld) => {
+      renderCustomFieldsSection(updatedWorld, isEdit && existing.world === updatedWorld.id ? existing.fields : null);
+    };
 
     pendingCroppedFiles = {};
     wireImageCropInput(document.getElementById('fImage'), 'image');
@@ -1652,9 +1816,14 @@
     function switchToWorld(newWorld) {
       selectedWorldId = newWorld.id;
       refreshWorldSelect(newWorld.id);
-      const gojuonChk = document.getElementById('templateGojuonChk');
-      if (gojuonChk) gojuonChk.checked = !!newWorld.sortByGojuon;
       renderDynamicSection(newWorld, isEdit ? existing : null, null);
+      currentCustomFields = isEdit && existing && existing.world === newWorld.id && Array.isArray(existing.customFields)
+        ? JSON.parse(JSON.stringify(existing.customFields))
+        : [];
+      renderCustomFieldsSection(newWorld, isEdit && existing.world === newWorld.id ? existing.fields : null);
+      window.__refreshCustomFieldsSection = (updatedWorld) => {
+        renderCustomFieldsSection(updatedWorld, isEdit && existing.world === updatedWorld.id ? existing.fields : null);
+      };
     }
 
     document.getElementById('fWorld').addEventListener('change', (e) => {
@@ -1689,13 +1858,6 @@
       const current = worldById(selectedWorldId);
       const moved = await moveTemplate(current, 1);
       if (moved) switchToWorld(moved);
-    });
-
-    document.getElementById('templateGojuonChk').addEventListener('change', async (e) => {
-      const current = worldById(selectedWorldId);
-      const checked = e.target.checked;
-      const updated = await toggleWorldFlag(current, 'sortByGojuon', checked);
-      if (!updated) e.target.checked = !checked; // 저장 실패하면 체크 상태 되돌림
     });
 
     document.getElementById('formFallbackLink').addEventListener('click', (e) => {
@@ -1871,8 +2033,12 @@
       obj.class = document.getElementById('fClass').value.trim() || null;
     }
 
+    // "캐릭터마다 다른 항목 추가 허용"이 켜진 템플릿이면, 템플릿 공통 항목(world.fields)에
+    // 이 캐릭터만의 항목(currentCustomFields)을 더해서 같이 처리한다.
+    const allValueFields = [...(world.fields || []), ...currentCustomFields];
+
     obj.fields = {};
-    (world.fields || []).forEach((f) => {
+    allValueFields.forEach((f) => {
       if (f.key === 'name') return; // 이름은 obj.name(최상위)에 이미 저장됨
       if (f.type === 'tags' || (f.type === 'category' && f.multi)) {
         obj.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
@@ -1892,6 +2058,10 @@
         obj.fields[f.key] = input ? input.value.trim() || '-' : '-';
       }
     });
+
+    if (world.perCharacterFields) {
+      obj.customFields = currentCustomFields.map((f) => ({ key: f.key, label: f.label, type: f.type }));
+    }
 
     const submitBtn = document.getElementById('formSubmit');
     submitBtn.disabled = true;
@@ -1923,7 +2093,7 @@
 
       // 엔트리 목록 항목들 안에 새로 고른 이미지가 있으면 각각 업로드하고, 그 경로를
       // 해당 엔트리의 image 값으로 채워 넣는다.
-      for (const f of world.fields || []) {
+      for (const f of allValueFields) {
         if (f.type !== 'entries') continue;
         const widget = currentFieldWidgets[f.key];
         if (!widget) continue;
@@ -2009,10 +2179,14 @@
         return;
       }
       setToken(v);
+      refreshCreateButtonVisibility();
+      renderGallery();
       closeSettingsModal();
     });
     document.getElementById('tokenClear').addEventListener('click', () => {
       setToken('');
+      refreshCreateButtonVisibility();
+      renderGallery();
       closeSettingsModal();
     });
     settingsOverlay.classList.add('is-open');
@@ -2023,6 +2197,13 @@
     const preset = activeSubFilter || null;
     openEditForm(null, world, preset);
   });
+
+  // 캐릭터 생성 버튼도 수정하기/삭제와 마찬가지로, 저장용 개인 토큰을 등록해둔
+  // 사람(=실제 운영자)한테만 보이게 한다. 토큰을 넣고 뺄 때마다 다시 확인한다.
+  function refreshCreateButtonVisibility() {
+    createTopBtnEl.style.display = getToken() ? '' : 'none';
+  }
+  refreshCreateButtonVisibility();
 
   [worlds, characters] = await Promise.all([loadWorlds(), loadCharacters()]);
 
