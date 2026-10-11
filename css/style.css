@@ -432,6 +432,13 @@ body {
   white-space: pre-line;
 }
 
+/* 소개/성격처럼 서식 있는 글 항목 안에 예전에 붙었던 글자 크기(붙여넣기 등으로 섞여 들어온
+   인라인 font-size)가 있어도, 다른 항목들과 폰트 크기만큼은 항상 똑같이 맞춰서 보여준다. */
+.modal-bio,
+.modal-bio * {
+  font-size: 14px !important;
+}
+
 .modal-edit-btn {
   width: 100%;
   margin-top: 20px;
