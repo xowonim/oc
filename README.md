@@ -19,7 +19,7 @@
 1. 깃허브 로그인 후, 오른쪽 위 + 버튼 → ‘New repository‘ 클릭 <br>
    ↳ Repository name : 저장소 이름 (영문) & Public 체크 후, Create repository ${\color{gray}(퍼블릭\space 안\space 하면!!\space 안 돼요..)}$ <br>
 2. ‘Code’ 창에서 Add file → Upload files 클릭 <br>
-   ↳ ①에 적힌 대로 폴더 생성 및 파일 업로드 ${\color{gray}(**index.html은\space 폴더\space 생성하면\space 절대\space XXX..**\space 그냥\space 첫\space 화면에\space 업로드하세요!!)}$ <br>
+   ↳ ①에 적힌 대로 폴더 생성 및 파일 업로드 ${\color{gray} (**index.html은\space 폴더\space 생성하면\space 절대\space XXX..**\space 그냥\space 첫\space 화면에\space 업로드하세요!!)}$ <br>
 3. js/app.js → 연필 아이콘(편집) 클릭 <br>
 ```
 const GITHUB_OWNER = ‘xowonim’; → 본인 github ID로 변경
