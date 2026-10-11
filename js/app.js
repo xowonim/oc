@@ -629,7 +629,7 @@
         sectionsHtml += `
           <div class="modal-collapse${noLine ? ' modal-collapse-noline' : ''}">
             <button type="button" class="modal-collapse-toggle" data-target="${cid}">
-              <span>${f.label}</span><span class="modal-collapse-arrow">▾ 펼치기</span>
+              <span class="modal-collapse-arrow">▶</span><span>${f.label}</span>
             </button>
             <div class="modal-collapse-body" id="${cid}" hidden>${raw || '-'}</div>
           </div>
@@ -693,8 +693,7 @@
         const wasHidden = target.hasAttribute('hidden');
         if (wasHidden) target.removeAttribute('hidden');
         else target.setAttribute('hidden', '');
-        const arrow = btn.querySelector('.modal-collapse-arrow');
-        if (arrow) arrow.textContent = wasHidden ? '▴ 접기' : '▾ 펼치기';
+        btn.classList.toggle('is-expanded', wasHidden);
       });
     });
 
