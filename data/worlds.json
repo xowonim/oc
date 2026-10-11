@@ -393,6 +393,6 @@
         "type": "entries"
       }
     ],
-    "perCharacterFields": false
+    "perCharacterFields": true
   }
 ]
