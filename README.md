@@ -5,14 +5,22 @@
 최대한 사이트 화면 내에서 템플릿을 자유롭게 수정하고 즐기실 수 있도록 무언가 힘을 써봤으니.. <br>
 재미있게 즐겨주세요 //
 
+
 ### ① 다운로드 받을 파일
 - index.html : 사이트 화면 구조
-- css/style.css : 레이아웃 (깃허브 저장소에 올리실 때, css 폴더를 만들어서 그 안에 넣으셔야 돼요..)
+- css/style.css : 레이아웃 <span style=“color:gray”>(깃허브 저장소에 올리실 때, css 폴더를 만들어서 그 안에 넣으셔야 돼요..)</span>
 - js/app.js : 사이트 작동 데이터 (“,js 폴더를 만들어서 그 안에 넣으셔야 돼요..)
 - data/world.json : 세계관 구성 정보 (“, data 폴더를 만들어서 그 안에 넣으셔야 돼요..)
 - data/characters.fallback.json : github API 호출에 실패했을 때, 대신 보여줄 빈 캐릭터 목록
 - data/character/_templet.json : 캐릭터 템플릿 (data 폴더 안에 character 폴더를 만들어서 그 안에 넣으셔야 돼요.. 이 폴더에 캐릭터들이 저장됨)
 - REDME.md : 이 파일입니다.. 있으면 도움 될 걸요? (아마도..)
+
+### ② 페이지 생성
+1. 깃허브 로그인 후, 오른쪽 위 + 버튼 → ‘New repository‘ 클릭 <br>
+   ↳ Repository name : 저장소 이름 (영문) & Public 체크 후, Create repository (퍼블릭 안 하면!! 안 돼요..) <br>
+2. ‘Code’ 창에서 Add file → Upload files 클릭 <br>
+   ↳ ①에 적힌 대로 폴더 생성 및 파일 업로드 (**index.html은 폴더 생성하면 절대 XXX..** 그냥 첫 화면에 업로드하세요!!)
+
 
 ## 처음 한 번만 하면 되는 설정
 
