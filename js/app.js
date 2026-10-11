@@ -574,15 +574,20 @@
     // 오는 접은글/긴글 섹션의 윗줄과 겹쳐서 줄이 두 개로 보이는 문제를 없앤다.
     function rowsBlockHtml(rows) {
       if (rows.length === 0) return '';
-      // 일반 텍스트 항목도 레이팅 항목처럼 2열로 나란히 보여준다(짝이 안 맞는
-      // 마지막 한 줄은 그냥 혼자 한 칸만 차지한다).
+      // 일반 텍스트 항목도 레이팅 항목처럼 2열로 나란히 보여준다. 항목 개수가 홀수여서
+      // 마지막 한 줄만 짝이 안 맞을 때는, 반 칸만 차지하고 비어있지 않도록 한 줄 전체를 차지하게 한다.
       const totalGridRows = Math.ceil(rows.length / 2);
+      const isOddCount = rows.length % 2 === 1;
       let html = '<div class="modal-fields">';
       rows.forEach((r, idx) => {
         const gridRowIdx = Math.floor(idx / 2);
         const isLastRow = gridRowIdx === totalGridRows - 1;
+        const isDanglingLast = isOddCount && idx === rows.length - 1;
+        const classes = ['modal-field-row'];
+        if (isLastRow) classes.push('no-border');
+        if (isDanglingLast) classes.push('modal-field-row-full');
         html += `
-          <div class="modal-field-row${isLastRow ? ' no-border' : ''}">
+          <div class="${classes.join(' ')}">
             <div class="modal-field-label">${r.label}</div>
             <div class="modal-field-value">${r.value}</div>
           </div>
