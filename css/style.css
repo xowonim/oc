@@ -421,6 +421,7 @@ body {
 
 .modal-field-value {
   flex: 1;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -988,6 +989,12 @@ body {
 .no-border {
   border-bottom: none !important;
   padding-bottom: 0 !important;
+}
+
+/* 항목 개수가 홀수여서 짝이 안 맞는 마지막 한 줄은, 반 칸만 차지해서 옆에 빈 칸이
+   남지 않도록 한 줄 전체(2칸)를 다 차지하게 한다. */
+.modal-field-row-full {
+  grid-column: 1 / -1;
 }
 
 .modal-rating {
