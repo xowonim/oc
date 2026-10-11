@@ -8,7 +8,7 @@
 
 ### ① 다운로드 받을 파일
 - index.html : 사이트 화면 구조
-- css/style.css : 레이아웃 <span style=“color:gray”>(깃허브 저장소에 올리실 때, css 폴더를 만들어서 그 안에 넣으셔야 돼요..)</span>
+- css/style.css : 레이아웃 <font color=“gray”>(깃허브 저장소에 올리실 때, css 폴더를 만들어서 그 안에 넣으셔야 돼요..)</font>
 - js/app.js : 사이트 작동 데이터 (“,js 폴더를 만들어서 그 안에 넣으셔야 돼요..)
 - data/world.json : 세계관 구성 정보 (“, data 폴더를 만들어서 그 안에 넣으셔야 돼요..)
 - data/characters.fallback.json : github API 호출에 실패했을 때, 대신 보여줄 빈 캐릭터 목록
