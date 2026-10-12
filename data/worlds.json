@@ -252,6 +252,11 @@
         "type": "rating"
       },
       {
+        "key": "f_1791822992143",
+        "label": "한자 이름",
+        "type": "text"
+      },
+      {
         "key": "f_1790492415019",
         "label": "눈치",
         "type": "rating"
@@ -270,11 +275,6 @@
         "key": "f_1790492394900",
         "label": "체력",
         "type": "rating"
-      },
-      {
-        "key": "f_1791822992143",
-        "label": "한자 이름",
-        "type": "text"
       }
     ],
     "sortByGojuon": true
