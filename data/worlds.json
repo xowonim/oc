@@ -313,7 +313,8 @@
         "key": "f_1790459041303",
         "label": "거주지",
         "type": "category",
-        "sidebarFilter": true
+        "sidebarFilter": true,
+        "galleryGroup": true
       },
       {
         "key": "f_1790459175974",
