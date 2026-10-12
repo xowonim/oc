@@ -66,6 +66,11 @@
         "type": "textarea"
       },
       {
+        "key": "f_1791823605919",
+        "label": "한자 이름",
+        "type": "text"
+      },
+      {
         "key": "history",
         "label": "작중행적",
         "type": "textarea"
@@ -79,11 +84,6 @@
         "key": "trivia",
         "label": "여담",
         "type": "textarea"
-      },
-      {
-        "key": "f_1791823605919",
-        "label": "한자 이름",
-        "type": "text"
       }
     ]
   },
