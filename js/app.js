@@ -1586,19 +1586,14 @@
         valInput.value = rawVal || '';
         label.appendChild(valInput);
 
-        // 이름(필수 항목) 자체에 바로 붙는 정렬 옵션: 이 세계관 캐릭터들을
-        // 이름 가나다순이 아니라 아이우에오(히라가나 읽는 순서)로 정렬한다.
+        // 이름(필수 항목) 자체에 바로 붙는 옵션들.
+        // (예전엔 여기에 "아이우에오(히라가나) 순 정렬" 체크박스도 있었는데, 이제 캐릭터
+        // 순서는 갤러리 화면의 "↕ 순서 편집"으로 직접 드래그해서 정하는 게 기본이라
+        // 더는 필요 없어서 뺐다 — 세계관 데이터에 이미 저장돼 있던 sortByGojuon 값
+        // 자체는 그대로 둬서, 아직 한 번도 드래그로 순서를 안 정해본 캐릭터들끼리는
+        // 전처럼 자연스러운 순서로 보이게 한다.)
         const roleRow = document.createElement('div');
         roleRow.className = 'field-category-roles';
-        const gojuonChk = document.createElement('label');
-        gojuonChk.className = 'field-category-role-chk';
-        gojuonChk.innerHTML = `<input type="checkbox" ${w.sortByGojuon ? 'checked' : ''}> 이름을 아이우에오(히라가나) 순으로 정렬`;
-        gojuonChk.querySelector('input').addEventListener('change', async (e) => {
-          const checked = e.target.checked;
-          const updated = await toggleWorldFlag(w, 'sortByGojuon', checked);
-          if (!updated) e.target.checked = !checked;
-        });
-        roleRow.appendChild(gojuonChk);
 
         // ETC처럼 세계관 하나에 출처가 다 제각각인 캐릭터들이 섞여 있을 때를 위한 옵션.
         // 켜두면, 이 템플릿의 공통 항목 말고 "이 캐릭터만의 항목"을 캐릭터마다 자유롭게
