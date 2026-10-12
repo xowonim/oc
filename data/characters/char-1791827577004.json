@@ -1,0 +1,31 @@
+{
+  "id": "char-1791827577004",
+  "world": "sinsekai",
+  "name": "주환희",
+  "image": "assets/char-1791827577004.png",
+  "profileImage": null,
+  "fields": {
+    "f_1790458275955": "Hwanhee Chu",
+    "f_1791823605919": "朱歡喜",
+    "subcategory": [
+      "이원향"
+    ],
+    "part": [
+      "1부",
+      "4부"
+    ],
+    "f_1790485524353": "여성",
+    "age": "",
+    "f_1790485496456": "",
+    "role": "",
+    "f_1790492015318": [
+      "火"
+    ],
+    "f_1790458370300": "",
+    "bio": "",
+    "history": "",
+    "personality": "",
+    "trivia": "",
+    "partOverrides": {}
+  }
+}
