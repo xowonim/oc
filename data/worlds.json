@@ -33,7 +33,8 @@
         "label": "출연",
         "type": "category",
         "sidebarFilter": true,
-        "multi": true
+        "multi": true,
+        "galleryGroup": true
       },
       {
         "key": "f_1790485524353",
