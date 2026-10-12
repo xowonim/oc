@@ -20,7 +20,7 @@
       {
         "key": "subcategory",
         "label": "소속",
-        "type": "category",
+        "type": "tags",
         "galleryGroup": true
       },
       {
@@ -295,24 +295,13 @@
       {
         "key": "f_1790459237442",
         "label": "소속",
-        "type": "tags",
-        "galleryGroup": false
-      },
-      {
-        "key": "f_1791818492696",
-        "label": "신체",
-        "type": "text"
+        "type": "tags"
       },
       {
         "key": "f_1790459018143",
         "label": "학교",
         "type": "category",
         "galleryGroup": true
-      },
-      {
-        "key": "f_1791818525092",
-        "label": "생일",
-        "type": "text"
       },
       {
         "key": "f_1790459275250",
@@ -323,8 +312,7 @@
         "key": "f_1790459041303",
         "label": "거주지",
         "type": "category",
-        "sidebarFilter": true,
-        "galleryGroup": false
+        "sidebarFilter": true
       },
       {
         "key": "f_1790459175974",
@@ -337,42 +325,11 @@
         "type": "textarea"
       },
       {
-        "key": "f_1791819936816",
-        "label": "좋아하는 음식",
-        "type": "text"
-      },
-      {
-        "key": "f_1791819945427",
-        "label": "싫어하는 음식",
-        "type": "text"
-      },
-      {
-        "key": "f_1791819953291",
-        "label": "좋아하는 것",
-        "type": "text"
-      },
-      {
-        "key": "f_1791819961424",
-        "label": "싫어하는 것",
-        "type": "text"
-      },
-      {
-        "key": "f_1791819970290",
-        "label": "좋아하는 사람",
-        "type": "text"
-      },
-      {
-        "key": "f_1791819982407",
-        "label": "싫어하는 사람",
-        "type": "text"
-      },
-      {
         "key": "f_1790459196974",
         "label": "여담",
         "type": "textarea"
       }
-    ],
-    "sortByGojuon": true
+    ]
   },
   {
     "id": "etc",
