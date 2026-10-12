@@ -29,6 +29,7 @@
   const logoHomeEl = document.getElementById('logoHome');
   const settingsBtnEl = document.getElementById('settingsBtn');
   const createTopBtnEl = document.getElementById('createTopBtn');
+  const orderEditBtnEl = document.getElementById('orderEditBtn');
   const modalOverlay = document.getElementById('modalOverlay');
   const modalBody = document.getElementById('modalBody');
   const modalClose = document.getElementById('modalClose');
@@ -38,6 +39,10 @@
   let characters = [];
   let activeWorld = 'all';
   let activeSubFilter = null;
+  // 神世界 전용 "순서 편집" 모드: 켜져 있는 동안은 카드를 눌러도 프로필이 안 열리고,
+  // 대신 손가락/마우스로 끌어서 순서를 바꿀 수 있다.
+  let editOrderMode = false;
+  let sortableInstances = [];
   let charactersLoadFailed = false;
   let charactersLoadError = '';
 
@@ -171,6 +176,22 @@
       if (r !== 0) return r;
     }
     return nameCompare(a, b);
+  }
+
+  // 神世界의 갤러리 구역(그룹) 안에서는, 그 구역에 대해 손으로 직접 끌어서 정해둔
+  // 순서(world.groupOrder[구역이름])가 있으면 그걸 최우선으로 쓴다. 그 순서 목록에
+  // 없는 캐릭터(새로 추가했거나 아직 안 옮긴 경우)는 항상 맨 뒤로 보내되, 그들끼리는
+  // sortCompare()의 기본 규칙(만든 순서 등)을 그대로 따른다.
+  function groupOrderCompare(a, b, world, groupName) {
+    const order = world && world.groupOrder && world.groupOrder[groupName];
+    if (order && order.length) {
+      const ia = order.indexOf(a.id);
+      const ib = order.indexOf(b.id);
+      const sa = ia === -1 ? Infinity : ia;
+      const sb = ib === -1 ? Infinity : ib;
+      if (sa !== sb) return sa - sb;
+    }
+    return sortCompare(a, b, world);
   }
 
   async function loadWorlds() {
@@ -490,7 +511,81 @@
   }
 
   // ---------- 갤러리 ----------
+  // "순서 편집" 버튼은 (전체 보기가 아닌) 세계관 하나를 보고 있고 + 토큰이 등록돼 있을
+  // 때 보여준다. 다른 세계관으로 넘어가거나 "전체"로 가면 편집 모드도 자동으로 꺼서,
+  // 안 보이는 채로 계속 켜져있지 않게 한다.
+  function updateOrderEditButton() {
+    if (!orderEditBtnEl) return;
+    const canEdit = activeWorld !== 'all' && !!getToken();
+    orderEditBtnEl.style.display = canEdit ? '' : 'none';
+    if (!canEdit && editOrderMode) {
+      editOrderMode = false;
+    }
+    orderEditBtnEl.classList.toggle('is-active', editOrderMode);
+    orderEditBtnEl.textContent = editOrderMode ? '✓ 순서 편집 완료' : '↕ 순서 편집';
+  }
+
+  // 수동으로 끌어서 정해둔 순서(world.groupOrder[key])가 있으면 그 위치로 당겨오고,
+  // 아직 순서를 안 정한 캐릭터들끼리는 원래 있던 상대 순서(자동 정렬 결과)를 그대로
+  // 유지한다 — Array.sort는 안정 정렬이라 "순서 미지정 = 동점"이면 원래 순서가 보존된다.
+  function applyManualOrderOverride(list, world, key) {
+    const order = world && world.groupOrder && world.groupOrder[key];
+    if (!order || !order.length) return list;
+    return [...list].sort((a, b) => {
+      const ia = order.indexOf(a.id);
+      const ib = order.indexOf(b.id);
+      const sa = ia === -1 ? Infinity : ia;
+      const sb = ib === -1 ? Infinity : ib;
+      return sa - sb;
+    });
+  }
+
+  // 드래그로 순서를 바꾸는 SortableJS를 각 갤러리 구역(.card-row)에 걸어준다. 편집 모드가
+  // 꺼져 있거나 지금 특정 세계관을 보고 있지 않으면, 기존에 걸려있던 것만 떼어내고 끝낸다.
+  function refreshSortableInstances(world) {
+    sortableInstances.forEach((s) => s.destroy());
+    sortableInstances = [];
+    galleryEl.classList.toggle('order-editing', editOrderMode);
+    if (!editOrderMode || !world) return;
+    if (typeof Sortable === 'undefined') {
+      console.warn('Sortable 라이브러리를 못 불러와서 순서 편집을 쓸 수 없어요.');
+      return;
+    }
+    galleryEl.querySelectorAll('.card-row').forEach((row) => {
+      const groupName = row.dataset.groupName || '__others__';
+      const instance = Sortable.create(row, {
+        animation: 150,
+        delay: 150, // 짧게 눌러서 바로 드래그가 시작되게 하되, 스크롤하려는 손짓과는 구분되게
+        delayOnTouchOnly: true,
+        touchStartThreshold: 5,
+        onEnd: () => {
+          const ids = Array.from(row.children)
+            .map((el) => el.dataset.charId)
+            .filter(Boolean);
+          persistGroupOrder(world.id, groupName, ids);
+        },
+      });
+      sortableInstances.push(instance);
+    });
+  }
+
+  // 이 세계관(worldId)의 이 구역(groupName)에 대한 새 순서를 worlds.json에 저장한다.
+  // 다른 데서 먼저 저장해서 버전이 어긋나 있어도 applyWorldsChange()가 최신 내용을
+  // 다시 받아 자동으로 재시도한다.
+  async function persistGroupOrder(worldId, groupName, ids) {
+    const ok = await saveWorldsWithMutation((freshWorlds) => {
+      const w = freshWorlds.find((x) => x.id === worldId);
+      if (!w) return;
+      w.groupOrder = w.groupOrder || {};
+      w.groupOrder[groupName] = ids;
+    });
+    if (!ok) {
+      window.alert('순서 저장에 실패했어요. 다시 시도해주세요 (새로고침하면 방금 바꾼 순서는 사라져요).');
+    }
+  }
+
   function renderGallery() {
+    updateOrderEditButton();
     galleryEl.innerHTML = '';
 
     // 캐릭터 목록 자체를 못 불러온 상태라면, "아직 등록된 캐릭터가 없어요"처럼
@@ -500,6 +595,7 @@
       warn.className = 'empty-msg';
       warn.textContent = `캐릭터 목록을 불러오지 못했어요 (${charactersLoadError || '알 수 없는 오류'}). 잠시 후 새로고침해주세요.`;
       galleryEl.appendChild(warn);
+      refreshSortableInstances(null);
       return;
     }
 
@@ -516,6 +612,7 @@
     } else {
       renderFlatGallery(sortForWorld(filtered, world), world);
     }
+    refreshSortableInstances(world);
   }
 
   function renderFlatGallery(list, world) {
@@ -527,7 +624,9 @@
     }
     const grid = document.createElement('div');
     grid.className = 'card-row';
-    list.forEach((c) => grid.appendChild(buildCard(c, world)));
+    grid.dataset.groupName = '__flat__';
+    const ordered = applyManualOrderOverride(list, world, '__flat__');
+    ordered.forEach((c) => grid.appendChild(buildCard(c, world)));
     galleryEl.appendChild(grid);
   }
 
@@ -539,7 +638,7 @@
     const groupNames = Array.from(new Set(known)).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
 
     groupNames.forEach((groupName) => {
-      const items = list.filter((c) => fieldMatches(fieldValue(c, groupField.key), groupName)).sort((a, b) => sortCompare(a, b, world));
+      const items = list.filter((c) => fieldMatches(fieldValue(c, groupField.key), groupName)).sort((a, b) => groupOrderCompare(a, b, world, groupName));
       const section = document.createElement('section');
       section.className = 'gallery-section';
       const header = document.createElement('h2');
@@ -548,12 +647,13 @@
       section.appendChild(header);
       const row = document.createElement('div');
       row.className = 'card-row';
+      row.dataset.groupName = groupName;
       items.forEach((c) => row.appendChild(buildCard(c, world)));
       section.appendChild(row);
       galleryEl.appendChild(section);
     });
 
-    const others = list.filter((c) => fieldValuesAsList(fieldValue(c, groupField.key)).length === 0).sort((a, b) => sortCompare(a, b, world));
+    const others = list.filter((c) => fieldValuesAsList(fieldValue(c, groupField.key)).length === 0).sort((a, b) => groupOrderCompare(a, b, world, '__others__'));
     if (others.length > 0) {
       const section = document.createElement('section');
       section.className = 'gallery-section';
@@ -563,6 +663,7 @@
       section.appendChild(header);
       const row = document.createElement('div');
       row.className = 'card-row';
+      row.dataset.groupName = '__others__';
       others.forEach((c) => row.appendChild(buildCard(c, world)));
       section.appendChild(row);
       galleryEl.appendChild(section);
@@ -581,6 +682,7 @@
   function buildCard(c, world) {
     const card = document.createElement('div');
     card.className = 'char-card';
+    card.dataset.charId = c.id;
     const imgWrap = document.createElement('div');
     imgWrap.className = 'char-card-image-wrap';
     if (c.image) {
@@ -603,7 +705,10 @@
     info.className = 'char-card-info';
     info.innerHTML = `<span class="char-card-name">${c.name}</span>${cardAuxHtml(c, world)}`;
     card.appendChild(info);
-    card.addEventListener('click', () => openModal(c));
+    card.addEventListener('click', () => {
+      if (editOrderMode) return; // 순서 편집 중에는 눌러도 프로필이 안 열리고, 끌어서 옮기는 데만 쓰인다
+      openModal(c);
+    });
     return card;
   }
 
@@ -2297,6 +2402,15 @@
     const preset = activeSubFilter || null;
     openEditForm(null, world, preset);
   });
+
+  if (orderEditBtnEl) {
+    orderEditBtnEl.addEventListener('click', () => {
+      editOrderMode = !editOrderMode;
+      updateOrderEditButton();
+      const world = activeWorld === 'all' ? null : worldById(activeWorld);
+      refreshSortableInstances(world);
+    });
+  }
 
   // 캐릭터 생성 버튼도 수정하기/삭제와 마찬가지로, 저장용 개인 토큰을 등록해둔
   // 사람(=실제 운영자)한테만 보이게 한다. 토큰을 넣고 뺄 때마다 다시 확인한다.
