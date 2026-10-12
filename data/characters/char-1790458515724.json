@@ -5,8 +5,11 @@
   "image": "assets/char-1790458515724.png",
   "profileImage": null,
   "fields": {
-    "f_1790458275955": "Otori Tamaki<div>玉木 囮</div>",
-    "subcategory": ["오토리 일행"],
+    "f_1790458275955": "Otori Tamaki",
+    "f_1791823605919": "玉木 囮",
+    "subcategory": [
+      "오토리 일행"
+    ],
     "part": [
       "1부",
       "2부",
