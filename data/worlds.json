@@ -128,6 +128,11 @@
         "sidebarFilter": true
       },
       {
+        "key": "f_1791822992143",
+        "label": "한자 이름",
+        "type": "text"
+      },
+      {
         "key": "f_1790477497994",
         "label": "학급",
         "type": "category",
@@ -141,11 +146,6 @@
       {
         "key": "f_1790484157581",
         "label": "동아리",
-        "type": "text"
-      },
-      {
-        "key": "f_1791822992143",
-        "label": "한자 이름",
         "type": "text"
       },
       {
