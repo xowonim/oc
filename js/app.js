@@ -374,6 +374,14 @@
       if (!cw) return '';
       return `<span class="char-card-aux">${cw.shortName || cw.name}</span>`;
     }
+    // 다른 세계관에서 손님으로 끼어 보여지는 캐릭터(예: OC 거주지 화면의 YMKB 캐릭터)는
+    // 자기 원래 세계관 이름을 배지로 보여준다 — 소속/학교 같은 값은 당연히 없을 테니.
+    if (c.world !== world.id) {
+      const ownWorld = worldById(c.world);
+      if (ownWorld) {
+        return `<span class="char-card-aux">${ownWorld.shortName || ownWorld.name}</span>`;
+      }
+    }
     const field = galleryAuxField(world);
     if (!field) return '';
     const raw = fieldValue(c, field.key);
@@ -430,6 +438,23 @@
     });
   }
 
+  // OC의 "거주지" 세부 화면에 한해서, YMKB 캐릭터 중 (자유 텍스트로 적어둔) "거주지"가
+  // 그 값과 글자 그대로 똑같은 애들을 손님으로 같이 보여준다. OC "전체" 화면에는 안 뜨고,
+  // 딱 그 거주지 화면에서만 끼워 넣는다 — OC 쪽 거주지 선택지 자체는 OC 캐릭터만 보고
+  // 만들어지므로(distinctFieldValues), YMKB 쪽 입력 때문에 새 거주지 탭이 생기진 않는다.
+  const OC_WORLD_ID = 'w_1790458917947';
+  const YMKB_WORLD_ID = 'w_1790459708806';
+  function ocResidenceGuestCharacters(residenceValue) {
+    if (!residenceValue) return [];
+    const ymkbWorld = worldById(YMKB_WORLD_ID);
+    const field = findFieldByLabel(ymkbWorld, '거주지');
+    if (!ymkbWorld || !field) return [];
+    const target = String(residenceValue).trim();
+    return characters.filter(
+      (c) => c.world === YMKB_WORLD_ID && String(fieldValue(c, field.key) || '').trim() === target
+    );
+  }
+
   function getFiltered() {
     let list = characters;
     if (activeWorld !== 'all') {
@@ -438,6 +463,9 @@
       const field = sidebarCategoryField(world);
       if (activeSubFilter && field) {
         list = list.filter((c) => fieldMatches(fieldValue(c, field.key), activeSubFilter));
+        if (activeWorld === OC_WORLD_ID && field.label === '거주지') {
+          list = list.concat(ocResidenceGuestCharacters(activeSubFilter));
+        }
       }
     }
     return list;
