@@ -24,6 +24,11 @@
         "galleryGroup": true
       },
       {
+        "key": "f_1791823605919",
+        "label": "한자 이름",
+        "type": "text"
+      },
+      {
         "key": "part",
         "label": "출연",
         "type": "category",
@@ -33,11 +38,6 @@
       {
         "key": "f_1790485524353",
         "label": "성별",
-        "type": "text"
-      },
-      {
-        "key": "f_1791823605919",
-        "label": "한자 이름",
         "type": "text"
       },
       {
