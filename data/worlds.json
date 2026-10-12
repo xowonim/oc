@@ -329,7 +329,8 @@
         "label": "여담",
         "type": "textarea"
       }
-    ]
+    ],
+    "sortByGojuon": true
   },
   {
     "id": "etc",
