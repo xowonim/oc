@@ -149,8 +149,40 @@ body {
 /* ---------- Content header / top-right create button ---------- */
 .content-header {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 10px;
   margin-bottom: 18px;
+}
+
+.btn-order-toggle {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid #d8d8d8;
+}
+
+.btn-order-toggle.is-active {
+  background: #5b7fb5;
+  color: #fff;
+  border-color: #5b7fb5;
+}
+
+/* 순서 편집 모드일 때: 카드가 "잡아서 끄는" 느낌이 나도록, 클릭으로 프로필이
+   열리지 않는다는 걸 커서로도 알려준다. */
+.gallery.order-editing .char-card {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.gallery.order-editing .char-card:active {
+  cursor: grabbing;
+}
+.sortable-ghost {
+  opacity: 0.35;
+}
+.sortable-chosen {
+  outline: 2px dashed #5b7fb5;
+  outline-offset: 2px;
 }
 
 .btn-create-top {
