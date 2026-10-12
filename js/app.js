@@ -128,7 +128,36 @@
     return 0;
   }
 
+  // 신세계: 캐릭터 프로필을 만든 순서 그대로 보여준다. id가 "char-<생성시각>" 형태라서,
+  // 그 안의 숫자(생성 시각)를 그대로 순서값으로 쓴다. (예전/수동으로 만든 id처럼 숫자가
+  // 없는 경우는 알 수 없으니 맨 뒤로 보낸다.)
+  function creationOrderValue(c) {
+    const m = String(c.id || '').match(/(\d+)$/);
+    return m ? parseInt(m[1], 10) : Infinity;
+  }
+
+  // ETC: "소속"이라고 이름 붙은 항목(태그 여러 개일 수 있음)의 첫 값 기준으로 가나다순 정렬.
+  function affiliationFieldForWorld(world) {
+    if (!world || !world.fields) return null;
+    return world.fields.find((f) => f.label === '소속') || null;
+  }
+  function affiliationValue(c, field) {
+    if (!field) return '';
+    const raw = fieldValue(c, field.key);
+    if (Array.isArray(raw)) return raw.length ? String(raw[0]) : '';
+    return raw ? String(raw) : '';
+  }
+
   function sortCompare(a, b, world) {
+    if (world && world.id === 'sinsekai') {
+      return creationOrderValue(a) - creationOrderValue(b);
+    }
+    if (world && world.id === 'etc') {
+      const field = affiliationFieldForWorld(world);
+      const r = affiliationValue(a, field).localeCompare(affiliationValue(b, field), 'ko', { numeric: true });
+      if (r !== 0) return r;
+      return nameCompare(a, b);
+    }
     if (world && world.sortByGojuon) {
       const r = gojuonCompare(a.name, b.name);
       if (r !== 0) return r;
@@ -215,6 +244,12 @@
   // ---------- 정렬 ----------
   function sortForWorld(list, world) {
     if (!world) return [...list].sort(nameCompare);
+
+    // 신세계/ETC는 위 sortCompare()에 전용 규칙이 있으니, 아래의 예전 방식
+    // (고유 순서 목록 / 학년·학급순)보다 그걸 그대로 우선 적용한다.
+    if (world.id === 'sinsekai' || world.id === 'etc') {
+      return [...list].sort((a, b) => sortCompare(a, b, world));
+    }
 
     if (world.fixedOrderList) {
       const order = world.fixedOrderList;
