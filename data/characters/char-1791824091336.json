@@ -29,6 +29,10 @@
     "history": "",
     "personality": "절제력이 뛰어나고 탐욕이 없는 편.",
     "trivia": "",
-    "partOverrides": {}
+    "partOverrides": {
+      "3부": [
+        "반대세력"
+      ]
+    }
   }
 }
