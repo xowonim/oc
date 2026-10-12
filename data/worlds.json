@@ -154,6 +154,11 @@
         "type": "text"
       },
       {
+        "key": "f_1792200000001",
+        "label": "거주지",
+        "type": "text"
+      },
+      {
         "key": "f_1790484388805",
         "label": "소개",
         "type": "textarea"
