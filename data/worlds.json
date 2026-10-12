@@ -327,14 +327,14 @@
         "type": "textarea"
       },
       {
-        "key": "f_1790459196974",
-        "label": "여담",
-        "type": "textarea"
-      },
-      {
         "key": "f_1791818492696",
         "label": "신체",
         "type": "text"
+      },
+      {
+        "key": "f_1790459196974",
+        "label": "여담",
+        "type": "textarea"
       }
     ],
     "sortByGojuon": true
