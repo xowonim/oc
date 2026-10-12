@@ -8,8 +8,7 @@
     "f_1790458275955": "Jellal",
     "f_1791823605919": "杰拉尔",
     "subcategory": [
-      "노르니르",
-      "디시르 아카데미"
+      "노르니르"
     ],
     "part": [
       "2부"
@@ -24,6 +23,11 @@
     "history": "",
     "personality": "",
     "trivia": "",
-    "partOverrides": {}
+    "partOverrides": {
+      "2부": [
+        "노르니르",
+        "디시르 아카데미"
+      ]
+    }
   }
 }
