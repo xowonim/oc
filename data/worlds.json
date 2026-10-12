@@ -342,14 +342,14 @@
         "type": "text"
       },
       {
-        "key": "f_1790459196974",
-        "label": "여담",
-        "type": "textarea"
-      },
-      {
         "key": "f_1791819945427",
         "label": "싫어하는 음식",
         "type": "text"
+      },
+      {
+        "key": "f_1790459196974",
+        "label": "여담",
+        "type": "textarea"
       }
     ],
     "sortByGojuon": true
