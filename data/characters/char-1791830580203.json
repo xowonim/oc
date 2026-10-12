@@ -1,0 +1,30 @@
+{
+  "id": "char-1791830580203",
+  "world": "sinsekai",
+  "name": "아나스타시아",
+  "image": "assets/char-1791830580203.jpg",
+  "profileImage": null,
+  "fields": {
+    "f_1790458275955": "Anastasia",
+    "f_1791823605919": "阿纳斯塔西娅<br>",
+    "subcategory": [
+      "‘규율’의 눈동자"
+    ],
+    "part": [
+      "5부"
+    ],
+    "f_1790485524353": "",
+    "age": "",
+    "f_1790485496456": "",
+    "role": "<br>",
+    "f_1790492015318": [
+      "?"
+    ],
+    "f_1790458370300": "태초를 다루는 능력",
+    "bio": "",
+    "history": "",
+    "personality": "",
+    "trivia": "",
+    "partOverrides": {}
+  }
+}
