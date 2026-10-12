@@ -362,14 +362,14 @@
         "type": "text"
       },
       {
-        "key": "f_1790459196974",
-        "label": "여담",
-        "type": "textarea"
-      },
-      {
         "key": "f_1791819982407",
         "label": "싫어하는 사람",
         "type": "text"
+      },
+      {
+        "key": "f_1790459196974",
+        "label": "여담",
+        "type": "textarea"
       }
     ],
     "sortByGojuon": true
