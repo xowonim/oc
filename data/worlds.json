@@ -337,14 +337,14 @@
         "type": "textarea"
       },
       {
-        "key": "f_1790459196974",
-        "label": "여담",
-        "type": "textarea"
-      },
-      {
         "key": "f_1791819936816",
         "label": "좋아하는 음식",
         "type": "text"
+      },
+      {
+        "key": "f_1790459196974",
+        "label": "여담",
+        "type": "textarea"
       }
     ],
     "sortByGojuon": true
