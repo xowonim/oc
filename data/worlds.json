@@ -322,14 +322,14 @@
         "galleryGroup": false
       },
       {
-        "key": "f_1790459175974",
-        "label": "소개",
-        "type": "textarea"
-      },
-      {
         "key": "f_1791818525092",
         "label": "생일",
         "type": "text"
+      },
+      {
+        "key": "f_1790459175974",
+        "label": "소개",
+        "type": "textarea"
       },
       {
         "key": "f_1790459190239",
