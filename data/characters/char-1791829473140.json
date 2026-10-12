@@ -1,0 +1,29 @@
+{
+  "id": "char-1791829473140",
+  "world": "sinsekai",
+  "name": "제랄",
+  "image": "assets/char-1791829473140.jpg",
+  "profileImage": null,
+  "fields": {
+    "f_1790458275955": "Jellal",
+    "f_1791823605919": "杰拉尔",
+    "subcategory": [
+      "노르니르",
+      "디시르 아카데미"
+    ],
+    "part": [
+      "2부"
+    ],
+    "f_1790485524353": "남성",
+    "age": "",
+    "f_1790485496456": "",
+    "role": "예르모족",
+    "f_1790492015318": [],
+    "f_1790458370300": "",
+    "bio": "",
+    "history": "",
+    "personality": "",
+    "trivia": "",
+    "partOverrides": {}
+  }
+}
