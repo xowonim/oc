@@ -1,0 +1,31 @@
+{
+  "id": "char-1791827232732",
+  "world": "sinsekai",
+  "name": "강 현",
+  "image": "assets/char-1791827232732.png",
+  "profileImage": null,
+  "fields": {
+    "f_1790458275955": "Hyun Kang",
+    "f_1791823605919": "江 玄",
+    "subcategory": [
+      "이원향"
+    ],
+    "part": [
+      "1부",
+      "4부"
+    ],
+    "f_1790485524353": "남성",
+    "age": "",
+    "f_1790485496456": "",
+    "role": "원향족",
+    "f_1790492015318": [
+      "水"
+    ],
+    "f_1790458370300": "현무의 힘을 다루는 능력",
+    "bio": "",
+    "history": "",
+    "personality": "",
+    "trivia": "",
+    "partOverrides": {}
+  }
+}
