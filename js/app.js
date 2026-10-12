@@ -444,6 +444,9 @@
   // 만들어지므로(distinctFieldValues), YMKB 쪽 입력 때문에 새 거주지 탭이 생기진 않는다.
   const OC_WORLD_ID = 'w_1790458917947';
   const YMKB_WORLD_ID = 'w_1790459708806';
+  // YMKB(유메키보 고등학교) 자체가 아오소라 시에 있는 학교라서, 거주지로 끼어든 YMKB
+  // 손님 캐릭터는 OC의 "학교" 구역에서 미분류 대신 이 이름으로 묶어 보여준다.
+  const YMKB_SCHOOL_NAME_FOR_OC = '유메키보 고등학교';
   function ocResidenceGuestCharacters(residenceValue) {
     if (!residenceValue) return [];
     const ymkbWorld = worldById(YMKB_WORLD_ID);
@@ -658,15 +661,26 @@
     galleryEl.appendChild(grid);
   }
 
+  // 보통은 그 캐릭터의 실제 항목 값(들)을 그대로 구역 이름으로 쓰지만, OC 화면에
+  // 거주지로 끼어든 YMKB 손님 캐릭터는 "학교" 항목 값이 아예 없다. YMKB(유메키보
+  // 고등학교) 자체가 아오소라 시에 있는 학교라는 설정이라, 미분류로 두지 않고
+  // 이 이름으로 고정해서 묶어 보여준다.
+  function galleryGroupValuesFor(c, groupField, world) {
+    if (world && world.id === OC_WORLD_ID && c.world === YMKB_WORLD_ID) {
+      return [YMKB_SCHOOL_NAME_FOR_OC];
+    }
+    return fieldValuesAsList(fieldValue(c, groupField.key));
+  }
+
   function renderGroupedGallery(list, world, groupField) {
     // 미리 정해둔 목록이 아니라, 지금 이 세계관에 실제로 존재하는 캐릭터들의
     // 값만 모아서(자모/숫자 순 정렬) 구역을 만든다.
     const known = [];
-    list.forEach((c) => fieldValuesAsList(fieldValue(c, groupField.key)).forEach((v) => known.push(v)));
+    list.forEach((c) => galleryGroupValuesFor(c, groupField, world).forEach((v) => known.push(v)));
     const groupNames = Array.from(new Set(known)).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
 
     groupNames.forEach((groupName) => {
-      const items = list.filter((c) => fieldMatches(fieldValue(c, groupField.key), groupName)).sort((a, b) => groupOrderCompare(a, b, world, groupName));
+      const items = list.filter((c) => galleryGroupValuesFor(c, groupField, world).includes(groupName)).sort((a, b) => groupOrderCompare(a, b, world, groupName));
       const section = document.createElement('section');
       section.className = 'gallery-section';
       const header = document.createElement('h2');
@@ -681,7 +695,7 @@
       galleryEl.appendChild(section);
     });
 
-    const others = list.filter((c) => fieldValuesAsList(fieldValue(c, groupField.key)).length === 0).sort((a, b) => groupOrderCompare(a, b, world, '__others__'));
+    const others = list.filter((c) => galleryGroupValuesFor(c, groupField, world).length === 0).sort((a, b) => groupOrderCompare(a, b, world, '__others__'));
     if (others.length > 0) {
       const section = document.createElement('section');
       section.className = 'gallery-section';
@@ -964,7 +978,46 @@
   const formBody = document.getElementById('formBody');
   const formClose = document.getElementById('formClose');
 
+  // ---- 작성 중인 내용 임시저장(초안) ----
+  // 캐릭터 생성/수정 창을 열어둔 동안 몇 초마다 입력값을 브라우저에 임시로 저장해뒀다가,
+  // 실수로 창을 닫거나 다른 화면을 눌러서 나가도 다시 열면 그대로 돌아오게 한다.
+  // 저장이 실제로 성공했을 때만 이 임시 저장본을 지운다(저장 전까지는 계속 남아있음).
+  let formAutosaveTimer = null;
+  function draftStorageKey(existing, world) {
+    return existing ? `oc_draft_edit_${existing.id}` : `oc_draft_new_${world.id}`;
+  }
+  function loadDraft(existing, world) {
+    try {
+      const raw = localStorage.getItem(draftStorageKey(existing, world));
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function saveDraftNow(existing, world) {
+    try {
+      localStorage.setItem(
+        draftStorageKey(existing, world),
+        JSON.stringify({ savedAt: Date.now(), snap: snapshotFormValues(world) })
+      );
+    } catch (e) {
+      // 저장 공간이 꽉 찼거나 브라우저가 막아둔 경우: 임시저장이 실패해도 작업 자체는
+      // 막지 않고 조용히 넘어간다.
+    }
+  }
+  function clearDraft(existing, world) {
+    try {
+      localStorage.removeItem(draftStorageKey(existing, world));
+    } catch (e) {
+      // ignore
+    }
+  }
+
   function closeFormModal() {
+    if (formAutosaveTimer) {
+      clearInterval(formAutosaveTimer);
+      formAutosaveTimer = null;
+    }
     formOverlay.classList.remove('is-open');
   }
   formClose.addEventListener('click', closeFormModal);
@@ -1349,9 +1402,20 @@
     const fieldMgr = document.createElement('div');
     fieldMgr.className = 'field-manager';
 
+    // ▲▼ 버튼을 계속 눌러야 하는 게 귀찮다는 요청으로, 왼쪽의 ▲▼ 묶음(.field-manager-move)을
+    // 손잡이 삼아 행 전체를 드래그로도 옮길 수 있게 한다. 이 묶음만 "추가" 줄(addRow)과
+    // 분리된 rowsWrap 안에 넣어야, SortableJS가 "+ 항목 추가" 줄까지 같이 끌고 다니지 않는다.
+    const rowsWrap = document.createElement('div');
+    rowsWrap.className = 'field-manager-rows';
+
     (w.fields || []).forEach((f, idx, arr) => {
       const row = document.createElement('div');
       row.className = 'field-manager-row';
+      // 주의: "data-field-key"는 실제 값 입력칸(예: 이름 <input>)에 이미 쓰이고 있는
+      // 속성이라, 행 전체에 똑같은 걸 붙이면 document.querySelector('[data-field-key=...]')가
+      // (문서 순서상 먼저 나오는) 이 행 자체를 집어버려서 이름 저장이 깨진다 — 그래서
+      // 드래그 순서 추적용은 별도 이름(data-row-field-key)을 쓴다.
+      row.dataset.rowFieldKey = f.key;
 
       const moveWrap = document.createElement('div');
       moveWrap.className = 'field-manager-move';
@@ -1573,8 +1637,10 @@
         row.appendChild(delBtn);
       }
 
-      fieldMgr.appendChild(row);
+      rowsWrap.appendChild(row);
     });
+
+    fieldMgr.appendChild(rowsWrap);
 
     const addRow = document.createElement('div');
     addRow.className = 'field-manager-add';
@@ -1594,6 +1660,7 @@
     fieldMgr.appendChild(addRow);
 
     container.appendChild(fieldMgr);
+    wireFieldManagerDrag(rowsWrap, w);
 
     document.getElementById('newFieldBtn').addEventListener('click', () => {
       const labelVal = document.getElementById('newFieldLabel').value.trim();
@@ -1846,6 +1913,53 @@
     if (ok) renderDynamicSection(freshWorld, snap, null);
   }
 
+  // 항목 순서를 ▲▼ 한 칸씩 말고 드래그로 한 번에 옮기기 위한 SortableJS 연결.
+  // 폼이 다시 그려질 때마다(항목 추가/삭제/이름변경 등으로 renderDynamicSection이 재호출될
+  // 때마다) 새 rowsWrap에 다시 걸어야 하므로, 이전 인스턴스가 있으면 먼저 정리한다.
+  let fieldManagerSortable = null;
+  function wireFieldManagerDrag(rowsWrap, world) {
+    if (fieldManagerSortable) {
+      fieldManagerSortable.destroy();
+      fieldManagerSortable = null;
+    }
+    if (typeof Sortable === 'undefined') return;
+    fieldManagerSortable = Sortable.create(rowsWrap, {
+      handle: '.field-manager-move',
+      animation: 150,
+      delay: 150,
+      delayOnTouchOnly: true,
+      touchStartThreshold: 5,
+      onEnd: () => {
+        const order = Array.from(rowsWrap.children)
+          .map((row) => row.dataset.rowFieldKey)
+          .filter(Boolean);
+        reorderFieldsInWorld(world, order);
+      },
+    });
+  }
+
+  // 드래그로 정해진 새 순서(키 배열) 그대로 worlds.json에 저장한다.
+  async function reorderFieldsInWorld(world, newKeyOrder) {
+    const snap = snapshotFormValues(world);
+    const ok = await saveWorldsWithMutation((freshWorlds) => {
+      const w = freshWorlds.find((x) => x.id === world.id);
+      if (!w) return;
+      const arr = w.fields || [];
+      const byKey = new Map(arr.map((f) => [f.key, f]));
+      const reordered = newKeyOrder.map((k) => byKey.get(k)).filter(Boolean);
+      // 혹시 드래그 순간 다른 곳에서 먼저 바뀌어 빠진 항목이 있으면 유실되지 않게 맨 뒤에 붙인다.
+      arr.forEach((f) => {
+        if (!newKeyOrder.includes(f.key)) reordered.push(f);
+      });
+      w.fields = reordered;
+    });
+    if (!ok) {
+      window.alert('순서 저장에 실패했어요. 다시 시도해주세요.');
+    }
+    const freshWorld = worldById(world.id) || world;
+    renderDynamicSection(freshWorld, snap, null);
+  }
+
   async function moveFieldInWorld(world, key, direction) {
     const snap = snapshotFormValues(world);
     const ok = await saveWorldsWithMutation((freshWorlds) => {
@@ -1985,9 +2099,21 @@
   function openEditForm(existing, world, presetSubcategory) {
     const isEdit = !!existing;
     const w = world || (existing ? worldById(existing.world) : worlds[0]);
+    // 이 캐릭터(수정 중이면 그 id, 새로 만드는 중이면 이 세계관)로 임시저장해둔 내용이
+    // 있으면 불러온다 — 저장된 캐릭터 값(existing) 대신 이 초안으로 폼을 채운다.
+    const draft = loadDraft(existing, w);
+    const renderData = draft ? draft.snap : existing;
+    const customValuesSource = draft ? draft.snap.fields : (isEdit ? existing.fields : null);
+    // 폼을 다시 열 때(초안 버리고 다시 열기 등) 이전에 돌고 있던 임시저장 타이머가
+    // 남아있으면 먼저 멈춘다 — 안 그러면 여러 개가 겹쳐서 돌게 된다.
+    if (formAutosaveTimer) {
+      clearInterval(formAutosaveTimer);
+      formAutosaveTimer = null;
+    }
 
     formBody.innerHTML = `
       <h2 class="form-title">${isEdit ? '캐릭터 수정' : '캐릭터 생성'}</h2>
+      ${draft ? `<p class="form-hint draft-restored-hint">작성하다 만 내용을 불러왔어요. <a href="#" id="discardDraftLink">처음부터 다시 쓰기</a></p>` : ''}
 
       <div class="image-area">
         <div class="template-select-row">
@@ -2023,17 +2149,30 @@
       </p>
     `;
 
-    renderDynamicSection(w, existing, presetSubcategory);
+    renderDynamicSection(w, renderData, presetSubcategory);
 
     // 이 캐릭터만의 항목(customFields)은 지금 고른 세계관이 이 캐릭터가 원래 속한
     // 세계관과 같을 때만(=수정 중일 때) 기존 값을 그대로 가져오고, 그 외에는 빈 목록에서 시작한다.
+    // (새로 추가했다가 아직 저장 안 한 항목 자체는 초안에 담기지 않고, 그 항목에 입력해둔
+    // 값만 customValuesSource로 복원된다.)
     currentCustomFields = isEdit && existing && existing.world === w.id && Array.isArray(existing.customFields)
       ? JSON.parse(JSON.stringify(existing.customFields))
       : [];
-    renderCustomFieldsSection(w, isEdit ? existing.fields : null);
+    renderCustomFieldsSection(w, customValuesSource);
     window.__refreshCustomFieldsSection = (updatedWorld) => {
       renderCustomFieldsSection(updatedWorld, isEdit && existing.world === updatedWorld.id ? existing.fields : null);
     };
+
+    if (draft) {
+      const discardLink = document.getElementById('discardDraftLink');
+      if (discardLink) {
+        discardLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          clearDraft(existing, w);
+          openEditForm(existing, world, presetSubcategory);
+        });
+      }
+    }
 
     pendingCroppedFiles = {};
     wireImageCropInput(document.getElementById('fImage'), 'image');
@@ -2103,6 +2242,13 @@
     });
 
     formOverlay.classList.add('is-open');
+
+    // 몇 초마다 지금까지 입력한 내용을 조용히 임시저장해둔다. 실수로 창을 닫거나
+    // 다른 화면을 눌러서 나가도, 다시 이 캐릭터(또는 이 세계관의 새 캐릭터 만들기)를
+    // 열면 여기서 복원된다 — 실제로 저장(formSubmit 성공)하면 그때 지워진다.
+    formAutosaveTimer = setInterval(() => {
+      saveDraftNow(existing, worldById(selectedWorldId) || w);
+    }, 4000);
   }
 
   function buildGithubNewFileUrl(world, presetSubcategory, existing) {
@@ -2362,6 +2508,8 @@
         characters.push(obj);
       }
 
+      // 실제로 저장이 끝났으니, 그동안 쌓인 임시저장본은 이제 필요 없다.
+      clearDraft(existing, world);
       closeFormModal();
       renderSidebar();
       renderGallery();
