@@ -34,7 +34,7 @@
         "type": "category",
         "sidebarFilter": true,
         "multi": true,
-        "galleryGroup": false
+        "galleryGroup": true
       },
       {
         "key": "f_1790485524353",
