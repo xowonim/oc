@@ -278,7 +278,17 @@
         "type": "rating"
       }
     ],
-    "sortByGojuon": true
+    "sortByGojuon": true,
+    "groupOrder": {
+      "__flat__": [
+        "char-1791636293252",
+        "char-1791636227662",
+        "char-1791667365493",
+        "char-1791636175454",
+        "char-1791394639314",
+        "char-1790485478675"
+      ]
+    }
   },
   {
     "id": "w_1790458917947",
