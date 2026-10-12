@@ -178,12 +178,20 @@
     return nameCompare(a, b);
   }
 
-  // 神世界의 갤러리 구역(그룹) 안에서는, 그 구역에 대해 손으로 직접 끌어서 정해둔
-  // 순서(world.groupOrder[구역이름])가 있으면 그걸 최우선으로 쓴다. 그 순서 목록에
-  // 없는 캐릭터(새로 추가했거나 아직 안 옮긴 경우)는 항상 맨 뒤로 보내되, 그들끼리는
-  // sortCompare()의 기본 규칙(만든 순서 등)을 그대로 따른다.
+  // 지금 사이드바에서 고른 하위 필터(神世界라면 "부")를 기준으로, 손으로 끌어서 정해둔
+  // 순서를 찾을 때 쓸 키를 만든다. "이 하위 필터 보기에서만 쓰는 순서"를 먼저 찾아보고,
+  // 없으면 "하위 필터 구분 없이 저장해둔 예전 순서"로 넘어간다 — 그래야 이 기능이 생기기
+  // 전에 이미 끌어서 정해둔 순서가 갑자기 사라지지 않는다.
+  function activeViewKey() {
+    return activeSubFilter || '__all__';
+  }
+
+  // 갤러리 구역(그룹) 안에서는, 그 구역에 대해 손으로 직접 끌어서 정해둔 순서가 있으면
+  // 그걸 최우선으로 쓴다. 그 순서 목록에 없는 캐릭터(새로 추가했거나 아직 안 옮긴 경우)는
+  // 항상 맨 뒤로 보내되, 그들끼리는 sortCompare()의 기본 규칙(만든 순서 등)을 그대로 따른다.
   function groupOrderCompare(a, b, world, groupName) {
-    const order = world && world.groupOrder && world.groupOrder[groupName];
+    const groupOrder = world && world.groupOrder;
+    const order = groupOrder && (groupOrder[`${activeViewKey()}::${groupName}`] || groupOrder[groupName]);
     if (order && order.length) {
       const ia = order.indexOf(a.id);
       const ib = order.indexOf(b.id);
@@ -560,7 +568,8 @@
   // 아직 순서를 안 정한 캐릭터들끼리는 원래 있던 상대 순서(자동 정렬 결과)를 그대로
   // 유지한다 — Array.sort는 안정 정렬이라 "순서 미지정 = 동점"이면 원래 순서가 보존된다.
   function applyManualOrderOverride(list, world, key) {
-    const order = world && world.groupOrder && world.groupOrder[key];
+    const groupOrder = world && world.groupOrder;
+    const order = groupOrder && (groupOrder[`${activeViewKey()}::${key}`] || groupOrder[key]);
     if (!order || !order.length) return list;
     return [...list].sort((a, b) => {
       const ia = order.indexOf(a.id);
@@ -582,6 +591,27 @@
       console.warn('Sortable 라이브러리를 못 불러와서 순서 편집을 쓸 수 없어요.');
       return;
     }
+    // 지금 "구역별로 묶어서" 보여주는 중이면(= .gallery-section들이 있으면), 구역
+    // 제목(.gallery-section-title)을 손잡이 삼아 구역 전체도 드래그로 순서를 바꿀 수
+    // 있게 한다. 구역이 없는(미분류 없이 쭉 나열되는) 화면에서는 걸지 않는다.
+    const isGrouped = !!galleryEl.querySelector(':scope > .gallery-section');
+    if (isGrouped) {
+      const sectionInstance = Sortable.create(galleryEl, {
+        handle: '.gallery-section-title',
+        animation: 150,
+        delay: 150,
+        delayOnTouchOnly: true,
+        touchStartThreshold: 5,
+        onEnd: () => {
+          const order = Array.from(galleryEl.children)
+            .map((section) => section.dataset.sectionGroupName)
+            .filter(Boolean);
+          persistSectionOrder(world.id, order);
+        },
+      });
+      sortableInstances.push(sectionInstance);
+    }
+
     galleryEl.querySelectorAll('.card-row').forEach((row) => {
       const groupName = row.dataset.groupName || '__others__';
       const instance = Sortable.create(row, {
@@ -600,15 +630,31 @@
     });
   }
 
-  // 이 세계관(worldId)의 이 구역(groupName)에 대한 새 순서를 worlds.json에 저장한다.
-  // 다른 데서 먼저 저장해서 버전이 어긋나 있어도 applyWorldsChange()가 최신 내용을
-  // 다시 받아 자동으로 재시도한다.
+  // 지금 보고 있는 하위 필터(神世界라면 "부") 화면에서, 구역들이 뜨는 순서를 저장한다.
+  async function persistSectionOrder(worldId, order) {
+    const key = activeViewKey();
+    const ok = await saveWorldsWithMutation((freshWorlds) => {
+      const w = freshWorlds.find((x) => x.id === worldId);
+      if (!w) return;
+      w.sectionOrder = w.sectionOrder || {};
+      w.sectionOrder[key] = order;
+    });
+    if (!ok) {
+      window.alert('구역 순서 저장에 실패했어요. 다시 시도해주세요 (새로고침하면 방금 바꾼 순서는 사라져요).');
+    }
+  }
+
+  // 이 세계관(worldId)의 이 구역(groupName)에 대한 새 순서를, "지금 보고 있던 하위
+  // 필터" 기준으로 저장한다(예: 신세계라면 지금 고른 "부"별로 따로). 다른 데서 먼저
+  // 저장해서 버전이 어긋나 있어도 applyWorldsChange()가 최신 내용을 다시 받아 자동으로
+  // 재시도한다.
   async function persistGroupOrder(worldId, groupName, ids) {
+    const key = `${activeViewKey()}::${groupName}`;
     const ok = await saveWorldsWithMutation((freshWorlds) => {
       const w = freshWorlds.find((x) => x.id === worldId);
       if (!w) return;
       w.groupOrder = w.groupOrder || {};
-      w.groupOrder[groupName] = ids;
+      w.groupOrder[key] = ids;
     });
     if (!ok) {
       window.alert('순서 저장에 실패했어요. 다시 시도해주세요 (새로고침하면 방금 바꾼 순서는 사라져요).');
@@ -661,13 +707,22 @@
     galleryEl.appendChild(grid);
   }
 
-  // 보통은 그 캐릭터의 실제 항목 값(들)을 그대로 구역 이름으로 쓰지만, OC 화면에
-  // 거주지로 끼어든 YMKB 손님 캐릭터는 "학교" 항목 값이 아예 없다. YMKB(유메키보
-  // 고등학교) 자체가 아오소라 시에 있는 학교라는 설정이라, 미분류로 두지 않고
-  // 이 이름으로 고정해서 묶어 보여준다.
+  // 보통은 그 캐릭터의 실제 항목 값(들)을 그대로 구역 이름으로 쓰지만, 두 가지 예외가 있다.
+  // 1) OC 화면에 거주지로 끼어든 YMKB 손님 캐릭터는 "학교" 항목 값이 아예 없다. YMKB(유메키보
+  //    고등학교) 자체가 아오소라 시에 있는 학교라는 설정이라, 미분류로 두지 않고 이 이름으로
+  //    고정해서 묶어 보여준다.
+  // 2) 神世界 캐릭터가 지금 보고 있는 "부"에 대해 소속을 따로 정해둔 경우(예: 평소엔 이원향
+  //    소속이지만 3부에서만 오토리 일행으로 적어둔 캐릭터) — 그 부를 보고 있을 때는 기본
+  //    소속 대신 그 부에 적어둔 소속으로 묶는다. 재정의가 없는 부(또는 "전체")에서는 그냥
+  //    기본 소속 그대로 쓴다.
   function galleryGroupValuesFor(c, groupField, world) {
     if (world && world.id === OC_WORLD_ID && c.world === YMKB_WORLD_ID) {
       return [YMKB_SCHOOL_NAME_FOR_OC];
+    }
+    if (world && isSinsekaiWorld(world) && activeSubFilter) {
+      const overrides = c.fields && c.fields.partOverrides;
+      const overridden = overrides && overrides[activeSubFilter];
+      if (Array.isArray(overridden) && overridden.length) return overridden;
     }
     return fieldValuesAsList(fieldValue(c, groupField.key));
   }
@@ -679,37 +734,50 @@
     list.forEach((c) => galleryGroupValuesFor(c, groupField, world).forEach((v) => known.push(v)));
     const groupNames = Array.from(new Set(known)).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
 
-    groupNames.forEach((groupName) => {
-      const items = list.filter((c) => galleryGroupValuesFor(c, groupField, world).includes(groupName)).sort((a, b) => groupOrderCompare(a, b, world, groupName));
+    const sections = groupNames.map((groupName) => ({
+      key: groupName,
+      title: groupName,
+      items: list
+        .filter((c) => galleryGroupValuesFor(c, groupField, world).includes(groupName))
+        .sort((a, b) => groupOrderCompare(a, b, world, groupName)),
+    }));
+
+    const others = list
+      .filter((c) => galleryGroupValuesFor(c, groupField, world).length === 0)
+      .sort((a, b) => groupOrderCompare(a, b, world, '__others__'));
+    if (others.length > 0) {
+      sections.push({ key: '__others__', title: '미분류', items: others });
+    }
+
+    // 구역(소속/학교 등) 자체가 뜨는 순서도 직접 끌어서 정해둘 수 있는데, 그 순서는
+    // "지금 보고 있는 하위 필터(神世界라면 부)" 별로 따로 저장돼 있다. 저장된 순서가
+    // 없으면 방금 만든 가나다순 그대로 쓴다.
+    const savedSectionOrder = world && world.sectionOrder && world.sectionOrder[activeViewKey()];
+    if (savedSectionOrder && savedSectionOrder.length) {
+      sections.sort((a, b) => {
+        const ia = savedSectionOrder.indexOf(a.key);
+        const ib = savedSectionOrder.indexOf(b.key);
+        const sa = ia === -1 ? Infinity : ia;
+        const sb = ib === -1 ? Infinity : ib;
+        return sa - sb;
+      });
+    }
+
+    sections.forEach(({ key, title, items }) => {
       const section = document.createElement('section');
       section.className = 'gallery-section';
+      section.dataset.sectionGroupName = key;
       const header = document.createElement('h2');
       header.className = 'gallery-section-title';
-      header.textContent = groupName;
+      header.textContent = title;
       section.appendChild(header);
       const row = document.createElement('div');
       row.className = 'card-row';
-      row.dataset.groupName = groupName;
+      row.dataset.groupName = key;
       items.forEach((c) => row.appendChild(buildCard(c, world)));
       section.appendChild(row);
       galleryEl.appendChild(section);
     });
-
-    const others = list.filter((c) => galleryGroupValuesFor(c, groupField, world).length === 0).sort((a, b) => groupOrderCompare(a, b, world, '__others__'));
-    if (others.length > 0) {
-      const section = document.createElement('section');
-      section.className = 'gallery-section';
-      const header = document.createElement('h2');
-      header.className = 'gallery-section-title';
-      header.textContent = '미분류';
-      section.appendChild(header);
-      const row = document.createElement('div');
-      row.className = 'card-row';
-      row.dataset.groupName = '__others__';
-      others.forEach((c) => row.appendChild(buildCard(c, world)));
-      section.appendChild(row);
-      galleryEl.appendChild(section);
-    }
   }
 
   // 이미지 무단 저장 방지: 우클릭(데스크탑) / 길게 누르기(아이폰·아이패드)로 저장되지 않도록 막는다.
@@ -1067,6 +1135,78 @@
     return { getValues: () => tags };
   }
 
+  // 神世界 캐릭터의 "부별 소속 재정의" 입력 위젯. 행마다 [부 이름(자유 입력)] + [그 부에서의
+  // 소속(태그, 여러 개 가능)]을 쓸 수 있고, 비워둔 부는 그냥 기본 소속을 그대로 쓴다.
+  // initialOverrides는 { "3부": ["오토리 일행"], ... } 형태의 객체.
+  function mountPartOverrideInput(container, initialOverrides) {
+    const rows = Object.entries(initialOverrides && typeof initialOverrides === 'object' ? initialOverrides : {}).map(
+      ([part, tags]) => ({ part, tags: Array.isArray(tags) ? [...tags] : [], tagWidget: null })
+    );
+
+    const wrap = document.createElement('div');
+    wrap.className = 'part-override-wrap';
+
+    function redraw() {
+      wrap.innerHTML = '';
+      rows.forEach((row, idx) => {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'part-override-row';
+
+        const partInput = document.createElement('input');
+        partInput.type = 'text';
+        partInput.className = 'form-input part-override-part';
+        partInput.placeholder = '부 (예: 3부)';
+        partInput.value = row.part;
+        partInput.addEventListener('change', () => {
+          row.part = partInput.value.trim();
+        });
+        rowEl.appendChild(partInput);
+
+        const tagContainer = document.createElement('div');
+        tagContainer.className = 'part-override-tags';
+        row.tagWidget = mountTagInput(tagContainer, row.tags);
+        rowEl.appendChild(tagContainer);
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'field-manager-del';
+        delBtn.textContent = '삭제';
+        delBtn.addEventListener('click', () => {
+          rows.splice(idx, 1);
+          redraw();
+        });
+        rowEl.appendChild(delBtn);
+
+        wrap.appendChild(rowEl);
+      });
+
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'field-manager-add-btn';
+      addBtn.textContent = '+ 재정의 추가';
+      addBtn.addEventListener('click', () => {
+        rows.push({ part: '', tags: [], tagWidget: null });
+        redraw();
+      });
+      wrap.appendChild(addBtn);
+    }
+
+    redraw();
+    container.appendChild(wrap);
+
+    return {
+      getValue: () => {
+        const obj = {};
+        rows.forEach((row) => {
+          const part = (row.part || '').trim();
+          const tags = row.tagWidget ? row.tagWidget.getValues() : row.tags;
+          if (part && tags && tags.length) obj[part] = tags;
+        });
+        return obj;
+      },
+    };
+  }
+
   // 별점 입력 위젯: 0~5점, 별을 클릭해서 점수를 정한다(같은 별을 다시 누르면 0점으로 초기화).
   function mountRatingInput(container, initialValue) {
     let value = Math.max(0, Math.min(5, Number(initialValue) || 0));
@@ -1378,11 +1518,15 @@
   // 캐릭터 생성/수정 창에서만 쓰이는 이 캐릭터 전용 항목 정의 목록. 템플릿(worlds.json)에는
   // 저장되지 않고, 이 캐릭터의 JSON 파일에 customFields로 그대로 저장된다.
   let currentCustomFields = [];
+  // 神世界 캐릭터의 "부별 소속 재정의" 위젯(있을 때만). snapshotFormValues/submitForm에서
+  // 함께 읽어서 저장한다.
+  let partOverrideWidget = null;
 
   function renderDynamicSection(w, existing, presetSubcategory) {
     const container = document.getElementById('dynamicFieldsContainer');
     container.innerHTML = '';
     currentFieldWidgets = {};
+    partOverrideWidget = null;
 
     if (w.useGradeClass) {
       const gradeLabel = document.createElement('label');
@@ -1657,6 +1801,20 @@
     container.appendChild(fieldMgr);
     wireFieldManagerDrag(rowsWrap, w);
 
+    // 神世界 한정: 부마다 소속이 바뀌는 캐릭터를 위한 "부별 소속 재정의" 입력칸.
+    // (작품 부에 따라 소속/진영이 바뀌는 캐릭터가 있어서, 기본 소속 하나로는 표현이 안 됨)
+    if (isSinsekaiWorld(w)) {
+      const partOverrideSection = document.createElement('div');
+      partOverrideSection.className = 'part-override-section';
+      partOverrideSection.innerHTML = `
+        <p class="form-section-title">부별 소속 재정의</p>
+        <p class="form-hint">비워두면 그 부에서도 기본 소속 그대로 떠요. 예: 백백도는 평소엔 "이원향"이지만 3부에서만 "오토리 일행"으로 적어두면, 3부 화면에서만 오토리 일행 쪽에 떠요.</p>
+      `;
+      container.appendChild(partOverrideSection);
+      const initialOverrides = existing && existing.fields ? existing.fields.partOverrides : null;
+      partOverrideWidget = mountPartOverrideInput(partOverrideSection, initialOverrides);
+    }
+
     document.getElementById('newFieldBtn').addEventListener('click', () => {
       const labelVal = document.getElementById('newFieldLabel').value.trim();
       const typeVal = document.getElementById('newFieldType').value;
@@ -1880,6 +2038,9 @@
     }
     Object.assign(snap.fields, snapshotFieldValues(world.fields || []));
     Object.assign(snap.fields, snapshotFieldValues(currentCustomFields));
+    if (isSinsekaiWorld(world) && partOverrideWidget) {
+      snap.fields.partOverrides = partOverrideWidget.getValue();
+    }
     return snap;
   }
 
@@ -2435,6 +2596,10 @@
 
     if (world.perCharacterFields) {
       obj.customFields = currentCustomFields.map((f) => ({ key: f.key, label: f.label, type: f.type }));
+    }
+
+    if (isSinsekaiWorld(world) && partOverrideWidget) {
+      obj.fields.partOverrides = partOverrideWidget.getValue();
     }
 
     const submitBtn = document.getElementById('formSubmit');
