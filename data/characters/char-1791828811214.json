@@ -1,0 +1,32 @@
+{
+  "id": "char-1791828811214",
+  "world": "sinsekai",
+  "name": "진",
+  "image": "assets/char-1791828811214.jpg",
+  "profileImage": "assets/char-1791828811214-profile.jpg",
+  "fields": {
+    "f_1790458275955": "Jin",
+    "f_1791823605919": "眞",
+    "subcategory": [
+      "음양오행의 신"
+    ],
+    "part": [
+      "1부",
+      "4부",
+      "5부"
+    ],
+    "f_1790485524353": "",
+    "age": "",
+    "f_1790485496456": "",
+    "role": "신",
+    "f_1790492015318": [
+      "-"
+    ],
+    "f_1790458370300": "부조화를 다루는 능력",
+    "bio": "",
+    "history": "",
+    "personality": "",
+    "trivia": "",
+    "partOverrides": {}
+  }
+}
