@@ -1,0 +1,30 @@
+{
+  "id": "char-1791829329615",
+  "world": "sinsekai",
+  "name": "베르디",
+  "image": "assets/char-1791829329615.jpg",
+  "profileImage": null,
+  "fields": {
+    "f_1790458275955": "Verdi",
+    "f_1791823605919": "威尔第",
+    "subcategory": [
+      "노르니르"
+    ],
+    "part": [
+      "2부"
+    ],
+    "f_1790485524353": "여성",
+    "age": "",
+    "f_1790485496456": "",
+    "role": "예르모족",
+    "f_1790492015318": [
+      "金"
+    ],
+    "f_1790458370300": "",
+    "bio": "",
+    "history": "",
+    "personality": "",
+    "trivia": "",
+    "partOverrides": {}
+  }
+}
