@@ -25,6 +25,10 @@
     "history": "",
     "personality": "아쉽게도 사신은 자아를 잃은 지 오래이다. 그들의 말과 행동은 곧 ’규율‘의 뜻이다.",
     "trivia": "",
-    "partOverrides": {}
+    "partOverrides": {
+      "5부": [
+        "‘규율’의 눈동자"
+      ]
+    }
   }
 }
