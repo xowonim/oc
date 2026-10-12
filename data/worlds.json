@@ -304,15 +304,15 @@
         "type": "text"
       },
       {
+        "key": "f_1791818525092",
+        "label": "생일",
+        "type": "text"
+      },
+      {
         "key": "f_1790459018143",
         "label": "학교",
         "type": "category",
         "galleryGroup": true
-      },
-      {
-        "key": "f_1791818525092",
-        "label": "생일",
-        "type": "text"
       },
       {
         "key": "f_1790459275250",
