@@ -27,6 +27,10 @@
     "history": "",
     "personality": "타로와 달리 엄청난 전투광에 자신을 제외한 이들을 하대하는 습성을 지녔다.<div>언행이 험악한 편.</div>",
     "trivia": "",
-    "partOverrides": {}
+    "partOverrides": {
+      "2부": [
+        "외부"
+      ]
+    }
   }
 }
