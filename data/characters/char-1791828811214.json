@@ -27,6 +27,10 @@
     "history": "",
     "personality": "",
     "trivia": "",
-    "partOverrides": {}
+    "partOverrides": {
+      "1부": [
+        "이원향"
+      ]
+    }
   }
 }
