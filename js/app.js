@@ -452,9 +452,12 @@
   // 만들어지므로(distinctFieldValues), YMKB 쪽 입력 때문에 새 거주지 탭이 생기진 않는다.
   const OC_WORLD_ID = 'w_1790458917947';
   const YMKB_WORLD_ID = 'w_1790459708806';
-  // YMKB(유메키보 고등학교) 자체가 아오소라 시에 있는 학교라서, 거주지로 끼어든 YMKB
-  // 손님 캐릭터는 OC의 "학교" 구역에서 미분류 대신 이 이름으로 묶어 보여준다.
+  // YMKB(유메키보 고등학교) 자체가 아오소라 시에 있는 학교라서, "아오소라 시" 화면에
+  // 거주지로 끼어든 YMKB 손님 캐릭터만 OC의 "학교" 구역에서 미분류 대신 이 이름으로
+  // 묶어 보여준다. 다른 거주지(예: 요조라 시)로 끼어든 YMKB 손님은 유메키보 학생이
+  // 아니므로 그냥 미분류로 둔다.
   const YMKB_SCHOOL_NAME_FOR_OC = '유메키보 고등학교';
+  const YMKB_SCHOOL_CITY = '아오소라 시';
   function ocResidenceGuestCharacters(residenceValue) {
     if (!residenceValue) return [];
     const ymkbWorld = worldById(YMKB_WORLD_ID);
@@ -708,16 +711,17 @@
   }
 
   // 보통은 그 캐릭터의 실제 항목 값(들)을 그대로 구역 이름으로 쓰지만, 두 가지 예외가 있다.
-  // 1) OC 화면에 거주지로 끼어든 YMKB 손님 캐릭터는 "학교" 항목 값이 아예 없다. YMKB(유메키보
-  //    고등학교) 자체가 아오소라 시에 있는 학교라는 설정이라, 미분류로 두지 않고 이 이름으로
-  //    고정해서 묶어 보여준다.
+  // 1) OC의 "아오소라 시" 화면에 거주지로 끼어든 YMKB 손님 캐릭터는 "학교" 항목 값이 아예
+  //    없다. YMKB(유메키보 고등학교) 자체가 아오소라 시에 있는 학교라는 설정이라, 미분류로
+  //    두지 않고 이 이름으로 고정해서 묶어 보여준다. 다른 거주지(예: 요조라 시)로 끼어든
+  //    YMKB 손님은 유메키보 학생이라고 할 수 없으니 그냥 미분류로 둔다.
   // 2) 神世界 캐릭터가 지금 보고 있는 "부"에 대해 소속을 따로 정해둔 경우(예: 평소엔 이원향
   //    소속이지만 3부에서만 오토리 일행으로 적어둔 캐릭터) — 그 부를 보고 있을 때는 기본
   //    소속 대신 그 부에 적어둔 소속으로 묶는다. 재정의가 없는 부(또는 "전체")에서는 그냥
   //    기본 소속 그대로 쓴다.
   function galleryGroupValuesFor(c, groupField, world) {
     if (world && world.id === OC_WORLD_ID && c.world === YMKB_WORLD_ID) {
-      return [YMKB_SCHOOL_NAME_FOR_OC];
+      return activeSubFilter === YMKB_SCHOOL_CITY ? [YMKB_SCHOOL_NAME_FOR_OC] : [];
     }
     if (world && isSinsekaiWorld(world) && activeSubFilter) {
       const overrides = c.fields && c.fields.partOverrides;
@@ -2554,59 +2558,64 @@
       setToken(t.trim());
     }
 
-    const obj = {
-      id: isEdit ? existing.id : `char-${Date.now()}`,
-      world: world.id,
-      name,
-      image: isEdit ? existing.image || null : null,
-      profileImage: isEdit ? existing.profileImage || null : null,
-    };
-
-    if (world.useGradeClass) {
-      const gradeVal = document.getElementById('fGrade').value;
-      obj.grade = gradeVal === '' ? null : Number(gradeVal);
-      obj.class = document.getElementById('fClass').value.trim() || null;
-    }
-
-    // "캐릭터마다 다른 항목 추가 허용"이 켜진 템플릿이면, 템플릿 공통 항목(world.fields)에
-    // 이 캐릭터만의 항목(currentCustomFields)을 더해서 같이 처리한다.
-    const allValueFields = [...(world.fields || []), ...currentCustomFields];
-
-    obj.fields = {};
-    allValueFields.forEach((f) => {
-      if (f.key === 'name') return; // 이름은 obj.name(최상위)에 이미 저장됨
-      if (f.type === 'tags' || (f.type === 'category' && f.multi)) {
-        obj.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
-      } else if (f.type === 'rating') {
-        obj.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValue() : 0;
-      } else if (f.type === 'entries') {
-        const list = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getEntries() : [];
-        obj.fields[f.key] = list.map((e) => ({ id: e.id, name: e.name || '', desc: e.desc || '', image: e.image || null }));
-      } else if (f.type === 'textarea' || f.type === 'collapse' || f.type === 'text') {
-        const rt = document.querySelector(`.richtext-editable[data-field-key="${f.key}"]`);
-        obj.fields[f.key] = rt ? rt.innerHTML.trim() : '';
-      } else if (f.type === 'category') {
-        const input = document.querySelector(`[data-field-key="${f.key}"]`);
-        obj.fields[f.key] = input ? input.value.trim() : '';
-      } else {
-        const input = document.querySelector(`[data-field-key="${f.key}"]`);
-        obj.fields[f.key] = input ? input.value.trim() || '-' : '-';
-      }
-    });
-
-    if (world.perCharacterFields) {
-      obj.customFields = currentCustomFields.map((f) => ({ key: f.key, label: f.label, type: f.type }));
-    }
-
-    if (isSinsekaiWorld(world) && partOverrideWidget) {
-      obj.fields.partOverrides = partOverrideWidget.getValue();
-    }
-
     const submitBtn = document.getElementById('formSubmit');
     submitBtn.disabled = true;
     submitBtn.textContent = '저장 중...';
 
+    // 아래 전체(화면 값 읽어오기 + 실제 저장)를 하나의 try로 묶어서, 어디서 문제가
+    // 생기든 (화면에 입력한 값을 읽는 단계에서 생긴 예상 못한 오류까지 포함해서)
+    // 사용자한테 "저장에 실패했어요" 메시지가 반드시 보이게 한다. 예전에는 값을
+    // 읽어오는 부분이 이 try 밖에 있어서, 거기서 오류가 나면 버튼도 그대로 멈춰있고
+    // 아무 메시지도 안 뜨는 채로 저장이 조용히 실패하는 경우가 있었다.
     try {
+      const obj = {
+        id: isEdit ? existing.id : `char-${Date.now()}`,
+        world: world.id,
+        name,
+        image: isEdit ? existing.image || null : null,
+        profileImage: isEdit ? existing.profileImage || null : null,
+      };
+
+      if (world.useGradeClass) {
+        const gradeVal = document.getElementById('fGrade').value;
+        obj.grade = gradeVal === '' ? null : Number(gradeVal);
+        obj.class = document.getElementById('fClass').value.trim() || null;
+      }
+
+      // "캐릭터마다 다른 항목 추가 허용"이 켜진 템플릿이면, 템플릿 공통 항목(world.fields)에
+      // 이 캐릭터만의 항목(currentCustomFields)을 더해서 같이 처리한다.
+      const allValueFields = [...(world.fields || []), ...currentCustomFields];
+
+      obj.fields = {};
+      allValueFields.forEach((f) => {
+        if (f.key === 'name') return; // 이름은 obj.name(최상위)에 이미 저장됨
+        if (f.type === 'tags' || (f.type === 'category' && f.multi)) {
+          obj.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValues() : [];
+        } else if (f.type === 'rating') {
+          obj.fields[f.key] = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getValue() : 0;
+        } else if (f.type === 'entries') {
+          const list = currentFieldWidgets[f.key] ? currentFieldWidgets[f.key].getEntries() : [];
+          obj.fields[f.key] = list.map((e) => ({ id: e.id, name: e.name || '', desc: e.desc || '', image: e.image || null }));
+        } else if (f.type === 'textarea' || f.type === 'collapse' || f.type === 'text') {
+          const rt = document.querySelector(`.richtext-editable[data-field-key="${f.key}"]`);
+          obj.fields[f.key] = rt ? rt.innerHTML.trim() : '';
+        } else if (f.type === 'category') {
+          const input = document.querySelector(`[data-field-key="${f.key}"]`);
+          obj.fields[f.key] = input ? input.value.trim() : '';
+        } else {
+          const input = document.querySelector(`[data-field-key="${f.key}"]`);
+          obj.fields[f.key] = input ? input.value.trim() || '-' : '-';
+        }
+      });
+
+      if (world.perCharacterFields) {
+        obj.customFields = currentCustomFields.map((f) => ({ key: f.key, label: f.label, type: f.type }));
+      }
+
+      if (isSinsekaiWorld(world) && partOverrideWidget) {
+        obj.fields.partOverrides = partOverrideWidget.getValue();
+      }
+
       const imageFile = document.getElementById('fImage').files[0];
       const croppedImage = pendingCroppedFiles.image;
       if (croppedImage || imageFile) {
@@ -2677,7 +2686,12 @@
       console.error(err);
       errorEl.textContent = err.message === 'NO_TOKEN'
         ? '토큰이 없어서 저장할 수 없어요.'
-        : '저장에 실패했어요: ' + err.message + ' (토큰 권한을 확인해주세요)';
+        : '저장에 실패했어요: ' + (err && err.message ? err.message : '알 수 없는 오류') + ' (토큰 권한을 확인해주세요)';
+      // 오류 문구가 버튼 바로 위라 스크롤 위치에 따라 눈에 안 띌 수 있어서, 실패했을
+      // 때는 그 문구가 확실히 화면에 보이도록 당겨오고 잠깐 눈에 띄게 한다.
+      errorEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      errorEl.classList.add('form-error-flash');
+      setTimeout(() => errorEl.classList.remove('form-error-flash'), 1600);
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = isEdit ? '저장하기' : '만들기';
