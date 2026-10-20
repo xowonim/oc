@@ -1359,6 +1359,14 @@
   // 굵게/기울임/밑줄/글자 크기 서식을 쓸 수 있는 입력 위젯(긴 글, 접은 글, 일반 텍스트 항목에 사용).
   // contenteditable div를 입력창으로 쓰고, 값은 innerHTML(HTML 형식의 서식 있는 텍스트)로 주고받는다.
   // 줄바꿈은 contenteditable 기본 동작으로 이미 가능하다(Enter 키).
+  // 서식 입력칸은 지웠다 다시 쓰면 끝에 <br>이 남을 수 있어서, 저장할 때 앞뒤의 빈 줄바꿈을 걷어낸다.
+  function stripTrailingBr(html) {
+    return String(html || '')
+      .replace(/^(\s|&nbsp;|<br\s*\/?>)+/gi, '')
+      .replace(/(\s|&nbsp;|<br\s*\/?>)+$/gi, '')
+      .trim();
+  }
+
   function mountRichText(container, key, initialHtml) {
     const wrap = document.createElement('div');
     wrap.className = 'richtext-wrap';
@@ -2598,7 +2606,7 @@
           obj.fields[f.key] = list.map((e) => ({ id: e.id, name: e.name || '', desc: e.desc || '', image: e.image || null }));
         } else if (f.type === 'textarea' || f.type === 'collapse' || f.type === 'text') {
           const rt = document.querySelector(`.richtext-editable[data-field-key="${f.key}"]`);
-          obj.fields[f.key] = rt ? rt.innerHTML.trim() : '';
+          obj.fields[f.key] = rt ? stripTrailingBr(rt.innerHTML) : '';
         } else if (f.type === 'category') {
           const input = document.querySelector(`[data-field-key="${f.key}"]`);
           obj.fields[f.key] = input ? input.value.trim() : '';
