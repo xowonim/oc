@@ -438,7 +438,26 @@
     characters
       .filter((c) => c.world === worldId)
       .forEach((c) => fieldValuesAsList(fieldValue(c, key)).forEach((v) => values.push(v)));
-    return Array.from(new Set(values)).sort((a, b) => {
+    const unique = Array.from(new Set(values));
+
+    // 세계관에 직접 정해둔 사이드바 순서(world.subFilterOrder)가 있으면 그 순서를
+    // 그대로 따른다(예: YMKB는 "3학년, 2학년, 1학년, 중등부" 순으로 보고 싶어함).
+    // 목록에 없는 새 값은 뒤에 가나다순으로 붙인다. 정해둔 순서가 없으면 예전 방식
+    // (미분류류 뒤로, 그 외엔 가나다/숫자순) 그대로 쓴다.
+    const world = worldById(worldId);
+    if (world && Array.isArray(world.subFilterOrder) && world.subFilterOrder.length) {
+      const order = world.subFilterOrder;
+      return unique.sort((a, b) => {
+        const ia = order.indexOf(a);
+        const ib = order.indexOf(b);
+        const sa = ia === -1 ? Infinity : ia;
+        const sb = ib === -1 ? Infinity : ib;
+        if (sa !== sb) return sa - sb;
+        return a.localeCompare(b, 'ko', { numeric: true });
+      });
+    }
+
+    return unique.sort((a, b) => {
       const ga = categorySortGroup(a);
       const gb = categorySortGroup(b);
       if (ga !== gb) return ga - gb;
