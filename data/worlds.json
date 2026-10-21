@@ -438,7 +438,13 @@
         "type": "rating"
       }
     ],
-    "sortByGojuon": true
+    "sortByGojuon": true,
+    "subFilterOrder": [
+      "3학년",
+      "2학년",
+      "1학년",
+      "중등부"
+    ]
   },
   {
     "id": "w_1790458917947",
