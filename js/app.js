@@ -1385,10 +1385,22 @@
         fileInput.className = 'entry-image-input';
         fileInput.addEventListener('change', () => {
           const file = fileInput.files[0];
-          if (file) {
+          if (!file) return;
+          if (typeof Cropper === 'undefined') {
             pendingFiles[entry.id] = file;
             redraw();
+            return;
           }
+          // 적용 전에 먼저 이미지 편집(자르기) 창을 띄운다.
+          openCropModal(file, (blob) => {
+            pendingFiles[entry.id] = new File([blob], 'entry.jpg', { type: 'image/jpeg' });
+            redraw();
+          }, {
+            onSkip: () => {
+              pendingFiles[entry.id] = file;
+              redraw();
+            },
+          });
         });
         imgLabel.appendChild(fileInput);
         row.appendChild(imgLabel);
@@ -1556,7 +1568,9 @@
   }
 
   // file: 사용자가 고른 원본 이미지 파일. onApply(blob): "적용" 눌렀을 때 잘라낸 결과(jpeg blob)를 받는 콜백.
-  function openCropModal(file, onApply) {
+  // opts: { aspectRatio(가로/세로, 없으면 자유), width(결과 가로 px), mime('image/png' 등), onSkip() }
+  function openCropModal(file, onApply, opts) {
+    opts = opts || {};
     const reader = new FileReader();
     reader.onload = () => {
       cropOverlayEl.classList.add('is-open');
@@ -1567,6 +1581,7 @@
         }
         activeCropper = new Cropper(cropImageEl, {
           viewMode: 1,
+          aspectRatio: opts.aspectRatio || NaN,
           autoCropArea: 1,
           background: false,
           responsive: true,
@@ -1590,18 +1605,21 @@
 
     applyBtn.addEventListener('click', () => {
       if (!activeCropper) return;
-      activeCropper.getCroppedCanvas({ imageSmoothingQuality: 'high' }).toBlob(
+      const canvasOpts = { imageSmoothingQuality: 'high' };
+      if (opts.width) canvasOpts.width = opts.width;
+      activeCropper.getCroppedCanvas(canvasOpts).toBlob(
         (blob) => {
           onApply(blob);
           closeCropModal();
         },
-        'image/jpeg',
+        opts.mime || 'image/jpeg',
         0.92
       );
     });
 
     skipBtn.addEventListener('click', () => {
       closeCropModal();
+      if (opts.onSkip) opts.onSkip();
     });
   }
 
@@ -3092,13 +3110,16 @@
     logoTextEl.addEventListener('input', debounce(saveLogoText, 700));
     logoTextEl.addEventListener('change', saveLogoText);
     document.getElementById('logoFileInput').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+      const original = e.target.files[0];
+      e.target.value = '';
+      if (!original) return;
+      const picked = await pickSiteImage(original, { aspectRatio: 5, width: 1000 });
+      if (!picked) return;
       const prevImage = siteConfig.logo && siteConfig.logo.image;
       setSiteStatus('저장하는 중...', false);
       let path;
       try {
-        path = await uploadSiteImage(file, 'logo');
+        path = await uploadSiteImage(picked.file, 'logo', picked.ext);
       } catch (err) {
         setSiteStatus('이미지를 올리지 못했어요: ' + err.message, true);
         return;
@@ -3112,13 +3133,16 @@
 
     // ---- 파비콘 ----
     document.getElementById('faviconFileInput').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+      const original = e.target.files[0];
+      e.target.value = '';
+      if (!original) return;
+      const picked = await pickSiteImage(original, { aspectRatio: 1, width: 256 });
+      if (!picked) return;
       const prevFavicon = siteConfig.favicon;
       setSiteStatus('저장하는 중...', false);
       let path;
       try {
-        path = await uploadSiteImage(file, 'favicon');
+        path = await uploadSiteImage(picked.file, 'favicon', picked.ext);
       } catch (err) {
         setSiteStatus('이미지를 올리지 못했어요: ' + err.message, true);
         return;
@@ -3209,11 +3233,41 @@
     return run;
   }
 
-  async function uploadSiteImage(file, kind) {
-    const ext = ((file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '')) || 'png';
-    const path = `${ASSETS_DIR}/site/${kind}-${Date.now()}.${ext}`;
-    await githubPutFile(path, await fileToBase64(file), `Upload site ${kind}`);
+  // file: 사용자가 고른 원본 파일이거나 자르기 결과(blob). ext: 파일 확장자(점 없이).
+  async function uploadSiteImage(file, kind, ext) {
+    const e = (ext || (file.name || 'x.png').split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+    const path = `${ASSETS_DIR}/site/${kind}-${Date.now()}.${e}`;
+    const b64 = file instanceof File ? await fileToBase64(file) : await blobToBase64(file);
+    await githubPutFile(path, b64, `Upload site ${kind}`);
     return path;
+  }
+
+  // 로고/파비콘 이미지는 올리기 전에 자르기 창을 먼저 띄운다. 로고는 5:1, 파비콘은 1:1.
+  // 반환: 올릴 { file, ext } 또는 (창을 그냥 닫으면) null. 자르기 도구를 못 불러왔으면 원본 그대로.
+  function pickSiteImage(file, cropOpts) {
+    return new Promise((resolve) => {
+      if (typeof Cropper === 'undefined') {
+        resolve({ file, ext: null });
+        return;
+      }
+      let done = false;
+      const finish = (v) => { if (!done) { done = true; resolve(v); } };
+      openCropModal(file, (blob) => finish({ file: blob, ext: 'png' }), Object.assign({
+        mime: 'image/png',
+        onSkip: () => finish({ file, ext: null }),
+      }, cropOpts));
+      // X 버튼/바깥 클릭으로 닫으면 취소
+      let seenOpen = false;
+      const watch = setInterval(() => {
+        const open = cropOverlayEl.classList.contains('is-open');
+        if (open) seenOpen = true;
+        else if (seenOpen) {
+          clearInterval(watch);
+          setTimeout(() => finish(null), 50);
+        }
+        if (done) clearInterval(watch);
+      }, 150);
+    });
   }
 
   // 새 이미지로 바꾸거나 기본으로 되돌린 뒤, 더 안 쓰는 예전 이미지 파일은 저장소에서 지운다.
