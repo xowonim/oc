@@ -30,8 +30,17 @@
         return (v < 16 ? '0' : '') + v.toString(16);
       }).join('');
     }
-    var p = rgb(point);
-    var onPoint = (p[0] * 299 + p[1] * 587 + p[2] * 114) / 1000 > 140 ? '#111111' : '#ffffff';
+    // 포인트색 위에 올라가는 글씨: 포인트색이 너무 짙거나 옅어서 글씨색이 안 보이면,
+    // 설정한 "글씨색"과 "배경색" 중 포인트색과 더 또렷하게 구분되는 쪽을 쓴다.
+    function lum(h) {
+      var v = rgb(h).map(function (n) { n /= 255; return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4); });
+      return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+    }
+    function contrast(a, b) {
+      var x = lum(a), y = lum(b);
+      return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+    }
+    var onPoint = contrast(text, point) >= contrast(bg, point) ? text : bg;
     root.setAttribute('data-theme', mode);
     var st = root.style;
     st.setProperty('--bg', bg);
@@ -51,7 +60,7 @@
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
-<link rel="stylesheet" href="css/style.css?v=61">
+<link rel="stylesheet" href="css/style.css?v=62">
 </head>
 <body>
   <div class="layout">
@@ -126,6 +135,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
-  <script src="js/app.js?v=61"></script>
+  <script src="js/app.js?v=62"></script>
 </body>
 </html>
