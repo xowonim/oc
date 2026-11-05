@@ -11,7 +11,7 @@
   const DARK_MODE_KEY = 'oc_dark_mode';
   const EDIT_MODE_KEY = 'oc_edit_mode';
   const SITE_CACHE_KEY = 'oc_site_cache';
-  const DEFAULT_SITE_TITLE = "xowon's OC";
+  const DEFAULT_SITE_TITLE = 'Untitled';
 
   // 이미지가 방금 막 저장된 직후에는 깃허브 페이지(배포된 사이트)가 다시 빌드될 때까지
   // (몇십 초~1~2분) 그 이미지 파일 자체가 아직 안 떠서, 사진이 깨진 것처럼(물음표 아이콘)
@@ -65,8 +65,9 @@
   function isDarkModeOn() {
     try { return localStorage.getItem(DARK_MODE_KEY) === '1'; } catch (e) { return false; }
   }
+  // 다크 모드 여부 + 사이트 색상(라이트/다크 각각)을 한 번에 화면에 반영한다.
   function applyDarkMode() {
-    document.documentElement.setAttribute('data-theme', isDarkModeOn() ? 'dark' : 'light');
+    window.ocApplyTheme(siteConfig && siteConfig.colors);
   }
   function setDarkModeOn(on) {
     try { localStorage.setItem(DARK_MODE_KEY, on ? '1' : '0'); } catch (e) {}
@@ -95,6 +96,7 @@
   function applySiteConfig(d) {
     siteConfig = d || {};
     document.title = siteConfig.title || DEFAULT_SITE_TITLE;
+    applyDarkMode();
     const logo = siteConfig.logo || {};
     if (logo.type === 'image' && logo.image) {
       logoHomeEl.textContent = '';
@@ -104,7 +106,7 @@
       img.src = assetUrl(logo.image);
       logoHomeEl.appendChild(img);
     } else {
-      logoHomeEl.textContent = (logo.type === 'text' && logo.text) ? logo.text : (siteConfig.title || DEFAULT_SITE_TITLE);
+      logoHomeEl.textContent = logo.text || DEFAULT_SITE_TITLE;
     }
     let link = document.getElementById('siteFavicon');
     if (siteConfig.favicon) {
@@ -2852,91 +2854,139 @@
     return `<button type="button" class="toggle-switch${isOn ? ' is-on' : ''}" id="${id}" role="switch" aria-checked="${isOn}"><span class="toggle-switch-knob"></span></button>`;
   }
 
-  function setNotice(id, text, isError) {
-    const el = document.getElementById(id);
+  // 사이트 설정은 값이 바뀌는 대로 자동 저장된다. 저장 상태는 작은 회색 글씨 한 줄로만 알려준다.
+  function setSiteStatus(text, isError) {
+    const el = document.getElementById('siteSaveStatus');
     if (!el) return;
     el.textContent = text;
     el.classList.toggle('is-error', !!isError);
   }
 
-  // 사이트 설정(제목/로고/파비콘) 입력 영역. 편집 모드가 켜져 있을 때만 그려진다.
+  function debounce(fn, ms) {
+    let t = null;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+  // 사이트 제목/로고/파비콘/색상 설정 영역. 편집 모드가 켜져 있을 때만 그려진다.
   function siteSettingsHtml() {
     const logo = siteConfig.logo || {};
     const logoMode = logo.type === 'image' ? 'image' : 'text';
-    const currentLogoImg = logo.image
+    const mode = isDarkModeOn() ? 'dark' : 'light';
+    const def = window.OC_DEFAULT_COLORS[mode];
+    const col = Object.assign({}, def, (siteConfig.colors && siteConfig.colors[mode]) || {});
+    const logoPreview = logo.image
       ? `<img class="settings-preview" src="${escapeAttr(assetUrl(logo.image))}" alt="현재 로고">`
       : '';
-    const currentFavicon = siteConfig.favicon
+    const faviconPreview = siteConfig.favicon
       ? `<img class="settings-preview settings-preview-small" src="${escapeAttr(assetUrl(siteConfig.favicon))}" alt="현재 파비콘">`
       : '';
     return `
-      <div class="settings-block">
-        <p class="settings-block-title">사이트 제목</p>
-        <input type="text" class="form-input" id="siteTitleInput" value="${escapeAttr(siteConfig.title || '')}" placeholder="${escapeAttr(DEFAULT_SITE_TITLE)}">
-        <div class="settings-block-actions">
-          <button type="button" class="settings-small-btn is-primary" id="siteTitleSave">저장</button>
-        </div>
-        <p class="settings-notice" id="siteTitleNotice"></p>
+      <div class="settings-row">
+        <span class="settings-row-label">사이트 제목</span>
+        <input type="text" class="settings-input" id="siteTitleInput" value="${escapeAttr(siteConfig.title || '')}" placeholder="${escapeAttr(DEFAULT_SITE_TITLE)}">
       </div>
 
-      <div class="settings-block">
-        <p class="settings-block-title">로고 설정</p>
-        <div class="seg-group" id="logoModeGroup">
-          <button type="button" class="seg-btn${logoMode === 'image' ? ' is-active' : ''}" data-mode="image">이미지</button>
-          <button type="button" class="seg-btn${logoMode === 'text' ? ' is-active' : ''}" data-mode="text">글씨</button>
+      <div class="settings-row is-top">
+        <span class="settings-row-label">로고</span>
+        <div class="settings-row-right">
+          <div class="seg-group" id="logoModeGroup">
+            <button type="button" class="seg-btn${logoMode === 'image' ? ' is-active' : ''}" data-mode="image">이미지</button>
+            <button type="button" class="seg-btn${logoMode === 'text' ? ' is-active' : ''}" data-mode="text">글씨</button>
+          </div>
+          <div class="settings-file-line" id="logoPaneImage" ${logoMode === 'image' ? '' : 'hidden'}>
+            ${logoPreview}
+            <label class="settings-small-btn">파일 선택<input type="file" accept="image/*" id="logoFileInput" hidden></label>
+          </div>
+          <input type="text" class="settings-input" id="logoTextInput" ${logoMode === 'text' ? '' : 'hidden'} value="${escapeAttr(logo.text || '')}" placeholder="${escapeAttr(DEFAULT_SITE_TITLE)}">
         </div>
-        <div id="logoPaneImage" ${logoMode === 'image' ? '' : 'hidden'}>
-          ${currentLogoImg}
-          <input type="file" accept="image/*" class="form-input" id="logoFileInput">
-        </div>
-        <div id="logoPaneText" ${logoMode === 'text' ? '' : 'hidden'}>
-          <input type="text" class="form-input" id="logoTextInput" value="${escapeAttr(logo.text || '')}" placeholder="${escapeAttr(DEFAULT_SITE_TITLE)}">
-        </div>
-        <div class="settings-block-actions">
-          <button type="button" class="settings-small-btn" id="logoReset">기본으로</button>
-          <button type="button" class="settings-small-btn is-primary" id="logoSave">저장</button>
-        </div>
-        <p class="settings-notice" id="logoNotice"></p>
       </div>
 
-      <div class="settings-block">
-        <p class="settings-block-title">파비콘 설정</p>
-        ${currentFavicon}
-        <input type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/x-icon,image/vnd.microsoft.icon" class="form-input" id="faviconFileInput">
-        <div class="settings-block-actions">
-          <button type="button" class="settings-small-btn" id="faviconReset">기본으로</button>
-          <button type="button" class="settings-small-btn is-primary" id="faviconSave">저장</button>
+      <div class="settings-row">
+        <span class="settings-row-label">파비콘</span>
+        <div class="settings-file-line">
+          ${faviconPreview}
+          <label class="settings-small-btn">파일 선택<input type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/x-icon,image/vnd.microsoft.icon" id="faviconFileInput" hidden></label>
+          ${siteConfig.favicon ? '<button type="button" class="settings-small-btn" id="faviconRemove">제거</button>' : ''}
         </div>
-        <p class="settings-notice" id="faviconNotice"></p>
       </div>
 
-      <div class="settings-block">
-        <p class="settings-block-title">카테고리 / 템플릿 설정</p>
-        <button type="button" class="form-submit form-submit-secondary" id="openCategorySettings">열기</button>
+      <div class="settings-row">
+        <span class="settings-row-label">색상<span class="settings-row-sub">${mode === 'dark' ? '다크 모드용' : '라이트 모드용'}</span></span>
+        <div class="color-line">
+          <label class="color-chip"><input type="color" data-color="bg" value="${col.bg}"><span>배경</span></label>
+          <label class="color-chip"><input type="color" data-color="point" value="${col.point}"><span>포인트</span></label>
+          <label class="color-chip"><input type="color" data-color="text" value="${col.text}"><span>글씨</span></label>
+        </div>
       </div>
+
+      <div class="settings-row">
+        <span class="settings-row-label">카테고리 / 템플릿</span>
+        <button type="button" class="settings-small-btn" id="openCategorySettings">설정</button>
+      </div>
+
+      <p class="settings-status" id="siteSaveStatus"></p>
     `;
   }
 
-  function tokenSettingsHtml(hasToken) {
-    return `
-      <div class="settings-block">
-        <p class="settings-block-title">토큰 설정</p>
-        <div class="token-guide">
-          <p>토큰은 사이트 내에서 편집과 저장을 할 수 있는 기능을 제공해요!</p>
-          <p><a class="token-link" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">이 곳</a>에서 토큰을 발급해 주세요.</p>
-          <ol>
-            <li>Repository access를 사용 중인 저장소로 지정해주세요.</li>
-            <li>Permissions에서 <b>Contents: Read and write</b>를 선택해주세요.</li>
-            <li>토큰을 생성 후, 아래에 붙여넣고 저장해 주세요.</li>
-          </ol>
-          <p class="token-note">(* 토큰이 생성된 페이지를 떠난 후에는 토큰을 다시 확인할 수 없으니, 필요하시다면 꼭..!! 다른 곳에 토큰을 백업해 주세요!)</p>
-        </div>
-        <input type="password" class="form-input token-input${hasToken ? ' is-registered' : ''}" id="tokenInput" autocomplete="off" placeholder="${hasToken ? '토큰이 등록되어 있어요!' : ''}">
-        <p class="form-error" id="settingsError"></p>
-        <button class="form-submit" id="tokenSave">저장</button>
-        ${hasToken ? '<button class="form-submit form-submit-secondary" id="tokenClear">토큰 삭제</button>' : ''}
+  // 토큰 설정은 따로 뜨는 박스 안에서 보여준다.
+  const tokenOverlay = document.createElement('div');
+  tokenOverlay.className = 'modal-overlay';
+  tokenOverlay.innerHTML = `
+    <div class="modal-card">
+      <button class="modal-close" aria-label="닫기">&times;</button>
+      <div class="modal-body" id="tokenBody"></div>
+    </div>`;
+  document.body.appendChild(tokenOverlay);
+  const tokenBody = tokenOverlay.querySelector('#tokenBody');
+  function closeTokenBox() { tokenOverlay.classList.remove('is-open'); }
+  tokenOverlay.querySelector('.modal-close').addEventListener('click', closeTokenBox);
+  tokenOverlay.addEventListener('click', (e) => { if (e.target === tokenOverlay) closeTokenBox(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTokenBox(); });
+
+  function renderTokenBox() {
+    const hasToken = !!getToken();
+    tokenBody.innerHTML = `
+      <h2 class="form-title">토큰 설정</h2>
+      <div class="token-guide">
+        <p>토큰은 사이트 내에서 편집과 저장을 할 수 있는 기능을 제공해요!</p>
+        <p><a class="token-link" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">이 곳</a>에서 토큰을 발급해 주세요.</p>
+        <ol>
+          <li>Repository access를 사용 중인 저장소로 지정해주세요.</li>
+          <li>Permissions에서 Contents: Read and write를 선택해주세요.</li>
+          <li>토큰을 생성 후, 아래에 붙여넣고 저장해 주세요.</li>
+        </ol>
+        <p>(* 토큰이 생성된 페이지를 떠난 후에는 토큰을 다시 확인할 수 없으니, 필요하시다면 꼭..!! 다른 곳에 토큰을 백업해 주세요!)</p>
       </div>
+      <input type="password" class="form-input" id="tokenInput" autocomplete="off" placeholder="${hasToken ? '토큰이 등록되어 있어요!' : ''}">
+      <p class="form-error" id="settingsError"></p>
+      <button class="form-submit" id="tokenSave">저장</button>
+      ${hasToken ? '<button class="form-submit form-submit-secondary" id="tokenClear">토큰 삭제</button>' : ''}
     `;
+    document.getElementById('tokenSave').addEventListener('click', () => {
+      const v = document.getElementById('tokenInput').value.trim();
+      if (!v) {
+        document.getElementById('settingsError').textContent = hasToken
+          ? '바꾸려면 새 토큰을 붙여넣어 주세요.'
+          : '토큰을 입력해주세요.';
+        return;
+      }
+      setToken(v);
+      refreshEditUi();
+      renderTokenBox();
+      renderSettingsBody();
+    });
+    const tokenClearEl = document.getElementById('tokenClear');
+    if (tokenClearEl) {
+      tokenClearEl.addEventListener('click', () => {
+        setToken('');
+        refreshEditUi();
+        renderTokenBox();
+        renderSettingsBody();
+      });
+    }
   }
 
   // 다크모드/편집모드/토큰이 바뀔 때마다 모달을 닫지 않고 안쪽만 다시 그려서 바로 반영한다.
@@ -2966,7 +3016,10 @@
         <hr class="settings-divider">
       ` : ''}
 
-      ${tokenSettingsHtml(hasToken)}
+      <div class="settings-row">
+        <span class="settings-row-label">토큰 설정</span>
+        <button type="button" class="settings-small-btn" id="openTokenBox">설정</button>
+      </div>
     `;
 
     document.getElementById('darkModeToggle').addEventListener('click', () => {
@@ -2985,26 +3038,10 @@
 
     if (editOn) wireSiteSettings();
 
-    document.getElementById('tokenSave').addEventListener('click', () => {
-      const v = document.getElementById('tokenInput').value.trim();
-      if (!v) {
-        document.getElementById('settingsError').textContent = hasToken
-          ? '바꾸려면 새 토큰을 붙여넣어 주세요.'
-          : '토큰을 입력해주세요.';
-        return;
-      }
-      setToken(v);
-      refreshEditUi();
-      renderSettingsBody();
+    document.getElementById('openTokenBox').addEventListener('click', () => {
+      renderTokenBox();
+      tokenOverlay.classList.add('is-open');
     });
-    const tokenClearEl = document.getElementById('tokenClear');
-    if (tokenClearEl) {
-      tokenClearEl.addEventListener('click', () => {
-        setToken('');
-        refreshEditUi();
-        renderSettingsBody();
-      });
-    }
   }
 
   // 편집 모드/토큰이 바뀌면, 그에 따라 보이거나 숨겨져야 하는 버튼들(캐릭터 생성, 순서 편집)을
@@ -3014,93 +3051,111 @@
     renderGallery();
   }
 
+  // 사이트 설정 저장 공통 처리: 상태 글씨를 갱신하고 결과를 돌려준다.
+  async function autoSaveSite(mutateFn) {
+    setSiteStatus('저장하는 중...', false);
+    const r = await saveSiteWithMutation(mutateFn);
+    setSiteStatus(r.ok ? '저장됐어요.' : '저장에 실패했어요: ' + r.message, !r.ok);
+    return r;
+  }
+
   function wireSiteSettings() {
     // ---- 사이트 제목 ----
-    document.getElementById('siteTitleSave').addEventListener('click', async () => {
-      const v = document.getElementById('siteTitleInput').value.trim();
-      setNotice('siteTitleNotice', '저장하는 중...', false);
-      const r = await saveSiteWithMutation((d) => {
-        if (v) d.title = v;
-        else delete d.title;
-      });
-      setNotice('siteTitleNotice', r.ok ? '저장했어요.' : '저장에 실패했어요: ' + r.message, !r.ok);
-    });
+    const titleEl = document.getElementById('siteTitleInput');
+    const saveTitle = () => {
+      const v = titleEl.value.trim();
+      autoSaveSite((d) => { if (v) d.title = v; else delete d.title; });
+    };
+    const saveTitleSoon = debounce(saveTitle, 700);
+    titleEl.addEventListener('input', saveTitleSoon);
+    titleEl.addEventListener('change', saveTitle);
 
     // ---- 로고 ----
-    let logoMode = (siteConfig.logo && siteConfig.logo.type === 'image') ? 'image' : 'text';
     const modeGroup = document.getElementById('logoModeGroup');
+    const logoTextEl = document.getElementById('logoTextInput');
     modeGroup.querySelectorAll('.seg-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
-        logoMode = btn.dataset.mode;
+        const mode = btn.dataset.mode;
         modeGroup.querySelectorAll('.seg-btn').forEach((b) => b.classList.toggle('is-active', b === btn));
-        document.getElementById('logoPaneImage').hidden = logoMode !== 'image';
-        document.getElementById('logoPaneText').hidden = logoMode !== 'text';
+        document.getElementById('logoPaneImage').hidden = mode !== 'image';
+        logoTextEl.hidden = mode !== 'text';
+        autoSaveSite((d) => { d.logo = Object.assign({}, d.logo, { type: mode }); });
       });
     });
-    document.getElementById('logoSave').addEventListener('click', async () => {
+    const saveLogoText = () => {
+      const v = logoTextEl.value.trim();
+      autoSaveSite((d) => {
+        d.logo = Object.assign({}, d.logo, { type: 'text' });
+        if (v) d.logo.text = v; else delete d.logo.text;
+      });
+    };
+    logoTextEl.addEventListener('input', debounce(saveLogoText, 700));
+    logoTextEl.addEventListener('change', saveLogoText);
+    document.getElementById('logoFileInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
       const prevImage = siteConfig.logo && siteConfig.logo.image;
-      let newImagePath = null;
-      if (logoMode === 'text') {
-        const text = document.getElementById('logoTextInput').value.trim();
-        if (!text) { setNotice('logoNotice', '로고로 쓸 글씨를 입력해주세요.', true); return; }
-        setNotice('logoNotice', '저장하는 중...', false);
-        const r = await saveSiteWithMutation((d) => {
-          d.logo = Object.assign({}, d.logo, { type: 'text', text });
-        });
-        setNotice('logoNotice', r.ok ? '저장했어요.' : '저장에 실패했어요: ' + r.message, !r.ok);
-        return;
-      }
-      const file = document.getElementById('logoFileInput').files[0];
-      if (!file && !prevImage) { setNotice('logoNotice', '로고로 쓸 이미지를 선택해주세요.', true); return; }
-      setNotice('logoNotice', '저장하는 중...', false);
+      setSiteStatus('저장하는 중...', false);
+      let path;
       try {
-        if (file) newImagePath = await uploadSiteImage(file, 'logo');
+        path = await uploadSiteImage(file, 'logo');
       } catch (err) {
-        setNotice('logoNotice', '이미지를 올리지 못했어요: ' + err.message, true);
+        setSiteStatus('이미지를 올리지 못했어요: ' + err.message, true);
         return;
       }
-      const r = await saveSiteWithMutation((d) => {
-        d.logo = Object.assign({}, d.logo, { type: 'image' });
-        if (newImagePath) d.logo.image = newImagePath;
+      const r = await autoSaveSite((d) => {
+        d.logo = Object.assign({}, d.logo, { type: 'image', image: path });
       });
-      if (r.ok && newImagePath && prevImage && prevImage !== newImagePath) deleteSiteImageQuietly(prevImage);
-      setNotice('logoNotice', r.ok ? '저장했어요.' : '저장에 실패했어요: ' + r.message, !r.ok);
-      if (r.ok) renderSettingsBody();
-    });
-    document.getElementById('logoReset').addEventListener('click', async () => {
-      const prevImage = siteConfig.logo && siteConfig.logo.image;
-      setNotice('logoNotice', '저장하는 중...', false);
-      const r = await saveSiteWithMutation((d) => { delete d.logo; });
-      if (r.ok && prevImage) deleteSiteImageQuietly(prevImage);
-      if (r.ok) renderSettingsBody();
-      else setNotice('logoNotice', '저장에 실패했어요: ' + r.message, true);
+      if (r.ok && prevImage && prevImage !== path) deleteSiteImageQuietly(prevImage);
+      if (r.ok) { renderSettingsBody(); setSiteStatus('저장됐어요.', false); }
     });
 
     // ---- 파비콘 ----
-    document.getElementById('faviconSave').addEventListener('click', async () => {
-      const file = document.getElementById('faviconFileInput').files[0];
-      if (!file) { setNotice('faviconNotice', '파비콘으로 쓸 이미지를 선택해주세요.', true); return; }
+    document.getElementById('faviconFileInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
       const prevFavicon = siteConfig.favicon;
-      setNotice('faviconNotice', '저장하는 중...', false);
+      setSiteStatus('저장하는 중...', false);
       let path;
       try {
         path = await uploadSiteImage(file, 'favicon');
       } catch (err) {
-        setNotice('faviconNotice', '이미지를 올리지 못했어요: ' + err.message, true);
+        setSiteStatus('이미지를 올리지 못했어요: ' + err.message, true);
         return;
       }
-      const r = await saveSiteWithMutation((d) => { d.favicon = path; });
+      const r = await autoSaveSite((d) => { d.favicon = path; });
       if (r.ok && prevFavicon && prevFavicon !== path) deleteSiteImageQuietly(prevFavicon);
-      if (r.ok) renderSettingsBody();
-      else setNotice('faviconNotice', '저장에 실패했어요: ' + r.message, true);
+      if (r.ok) { renderSettingsBody(); setSiteStatus('저장됐어요.', false); }
     });
-    document.getElementById('faviconReset').addEventListener('click', async () => {
-      const prevFavicon = siteConfig.favicon;
-      setNotice('faviconNotice', '저장하는 중...', false);
-      const r = await saveSiteWithMutation((d) => { delete d.favicon; });
-      if (r.ok && prevFavicon) deleteSiteImageQuietly(prevFavicon);
-      if (r.ok) renderSettingsBody();
-      else setNotice('faviconNotice', '저장에 실패했어요: ' + r.message, true);
+    const faviconRemoveEl = document.getElementById('faviconRemove');
+    if (faviconRemoveEl) {
+      faviconRemoveEl.addEventListener('click', async () => {
+        const prevFavicon = siteConfig.favicon;
+        const r = await autoSaveSite((d) => { delete d.favicon; });
+        if (r.ok && prevFavicon) deleteSiteImageQuietly(prevFavicon);
+        if (r.ok) { renderSettingsBody(); setSiteStatus('저장됐어요.', false); }
+      });
+    }
+
+    // ---- 색상 (지금 켜져 있는 모드의 색만 바꾼다) ----
+    const mode = isDarkModeOn() ? 'dark' : 'light';
+    document.querySelectorAll('input[data-color]').forEach((inp) => {
+      // 고르는 동안은 바로바로 화면에 미리 보여주고,
+      inp.addEventListener('input', () => {
+        const colors = JSON.parse(JSON.stringify(siteConfig.colors || {}));
+        colors[mode] = Object.assign({}, colors[mode], { [inp.dataset.color]: inp.value });
+        siteConfig = Object.assign({}, siteConfig, { colors });
+        applyDarkMode();
+      });
+      // 색 선택을 마치면 저장한다.
+      inp.addEventListener('change', () => {
+        const key = inp.dataset.color;
+        const val = inp.value;
+        autoSaveSite((d) => {
+          d.colors = d.colors || {};
+          d.colors[mode] = Object.assign({}, d.colors[mode], { [key]: val });
+        });
+      });
     });
 
     document.getElementById('openCategorySettings').addEventListener('click', () => {
@@ -3211,7 +3266,9 @@
     });
     settingsBody.appendChild(back);
     settingsBody.appendChild(makeEl('h2', 'form-title', '카테고리 / 템플릿 설정'));
-    settingsBody.appendChild(makeEl('p', 'form-hint', '카테고리의 순서와 이름을 바꾸고, 각 카테고리의 프로필 템플릿(입력 항목)을 고칠 수 있어요. 바꾸는 즉시 저장돼요.'));
+    const catHint = makeEl('p', 'form-hint');
+    catHint.innerHTML = '각 카테고리의 순서, 이름, 프로필 템플릿을 변경/삭제할 수 있어요.<br>모든 변경 사항은 자동으로 저장됩니다.';
+    settingsBody.appendChild(catHint);
 
     const list = makeEl('div', 'cat-list');
     worlds.forEach((w, idx) => {
