@@ -3,21 +3,60 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>xowon's OC</title>
+<title>Untitled</title>
 <script>
-  // 다크모드는 저장된 값대로 가장 먼저 적용해서, 밝은 화면이 잠깐 번쩍이는 걸 막는다.
-  try {
-    document.documentElement.setAttribute('data-theme', localStorage.getItem('oc_dark_mode') === '1' ? 'dark' : 'light');
-  } catch (e) {}
+  // 다크모드/사이트 색상은 저장된 값대로 가장 먼저 적용해서, 화면이 잠깐 번쩍이는 걸 막는다.
+  // (app.js도 이 함수를 그대로 불러다 쓴다)
+  window.OC_DEFAULT_COLORS = {
+    light: { bg: '#ffffff', point: '#9a9a9a', text: '#222222' },
+    dark: { bg: '#15161a', point: '#9a9a9a', text: '#e9e9ec' }
+  };
+  window.ocApplyTheme = function (colors) {
+    var root = document.documentElement;
+    var dark = false;
+    try { dark = localStorage.getItem('oc_dark_mode') === '1'; } catch (e) {}
+    if (!colors) {
+      try { colors = (JSON.parse(localStorage.getItem('oc_site_cache') || '{}') || {}).colors; } catch (e) {}
+    }
+    var mode = dark ? 'dark' : 'light';
+    var def = window.OC_DEFAULT_COLORS[mode];
+    var c = (colors && colors[mode]) || {};
+    var bg = c.bg || def.bg, point = c.point || def.point, text = c.text || def.text;
+    function rgb(h) { h = h.replace('#', ''); return [0, 2, 4].map(function (i) { return parseInt(h.substr(i, 2), 16); }); }
+    function mix(t) {
+      var x = rgb(bg), y = rgb(text);
+      return '#' + [0, 1, 2].map(function (i) {
+        var v = Math.round(x[i] * (1 - t) + y[i] * t);
+        return (v < 16 ? '0' : '') + v.toString(16);
+      }).join('');
+    }
+    var p = rgb(point);
+    var onPoint = (p[0] * 299 + p[1] * 587 + p[2] * 114) / 1000 > 140 ? '#111111' : '#ffffff';
+    root.setAttribute('data-theme', mode);
+    var st = root.style;
+    st.setProperty('--bg', bg);
+    st.setProperty('--surface', bg);
+    st.setProperty('--text', text);
+    st.setProperty('--card-bg', mix(0.04));
+    st.setProperty('--hover-bg', mix(0.06));
+    st.setProperty('--chip-bg', mix(0.09));
+    st.setProperty('--border', mix(0.14));
+    st.setProperty('--placeholder', mix(0.28));
+    st.setProperty('--sub-text', mix(0.5));
+    st.setProperty('--muted-text', mix(0.72));
+    st.setProperty('--invert-bg', point);
+    st.setProperty('--invert-text', onPoint);
+  };
+  try { window.ocApplyTheme(); } catch (e) {}
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
-<link rel="stylesheet" href="css/style.css?v=60">
+<link rel="stylesheet" href="css/style.css?v=61">
 </head>
 <body>
   <div class="layout">
     <aside class="sidebar">
-      <button class="logo-home" id="logoHome">xowon's OC</button>
+      <button class="logo-home" id="logoHome">Untitled</button>
       <nav class="nav-list" id="navList"></nav>
       <div id="subListWrap"></div>
     </aside>
@@ -87,6 +126,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
-  <script src="js/app.js?v=60"></script>
+  <script src="js/app.js?v=61"></script>
 </body>
 </html>
