@@ -4,7 +4,45 @@
   --sub-text: #8a8a8a;
   --border: #e6e6e6;
   --card-bg: #fafafa;
+  /* 버튼/인풋/모달처럼 배경 위에 얹는 "박스" 표면 */
+  --surface: #ffffff;
+  /* 살짝 깔아두는 옅은 회색 영역(호버, 이미지 빈칸, 서식 도구줄 등) */
+  --hover-bg: #f5f5f5;
+  --chip-bg: #eeeeee;
+  --muted-text: #444444;
+  --placeholder: #c9c9c9;
+  /* 주요 버튼(캐릭터 생성, 저장 등): 라이트는 검정 바탕, 다크는 반대로 밝은 바탕 */
+  --invert-bg: #222222;
+  --invert-text: #ffffff;
+  --error-bg: #fde8e7;
+  --warn-bg: #fef3c7;
+  --warn-text: #92400e;
+  --card-hover-shadow: rgba(0, 0, 0, 0.06);
   --sidebar-w: 220px;
+  /* 모서리 둥근 정도(전보다 각지게) */
+  --radius-lg: 8px;
+  --radius-md: 6px;
+  --radius-sm: 4px;
+}
+
+/* 다크 모드: 설정에서 켠 값이 html[data-theme]로 붙는다(OS 설정을 따라가지 않고 직접 선택) */
+:root[data-theme="dark"] {
+  --bg: #15161a;
+  --text: #e9e9ec;
+  --sub-text: #9a9aa2;
+  --border: #30313a;
+  --card-bg: #1d1e24;
+  --surface: #1f2026;
+  --hover-bg: #262730;
+  --chip-bg: #2b2c34;
+  --muted-text: #c7c7cf;
+  --placeholder: #55565f;
+  --invert-bg: #e9e9ec;
+  --invert-text: #15161a;
+  --error-bg: #3c2224;
+  --warn-bg: #3a2f10;
+  --warn-text: #e8b24d;
+  --card-hover-shadow: rgba(0, 0, 0, 0.5);
 }
 
 * { box-sizing: border-box; }
@@ -15,6 +53,7 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* ---------- Layout ---------- */
@@ -30,6 +69,12 @@ body {
   padding: 24px 16px;
   border-right: 1px solid var(--border);
   min-height: 100vh;
+  /* 스크롤을 내려도 카테고리가 화면에 계속 떠 있게 고정 */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--bg);
 }
 
 .content {
@@ -71,8 +116,8 @@ body {
   width: 100%;
   text-align: left;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: #fff;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
   padding: 12px 14px;
   font-family: inherit;
   font-size: 14px;
@@ -83,31 +128,43 @@ body {
 }
 
 .nav-btn:hover {
-  border-color: #bbb;
+  border-color: var(--sub-text);
 }
 
 .nav-btn.is-active {
-  background: #222;
-  border-color: #222;
-  color: #fff;
+  background: var(--invert-bg);
+  border-color: var(--invert-bg);
+  color: var(--invert-text);
 }
 
-.settings-btn {
-  width: 100%;
-  margin-top: 20px;
-  border: 1px dashed var(--border);
-  border-radius: 10px;
-  background: none;
-  padding: 10px 12px;
-  font-family: inherit;
-  font-size: 12px;
+/* 화면 왼쪽 아래에 떠 있는 동그란 설정 아이콘 */
+.settings-fab {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
   color: var(--sub-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  z-index: 40;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
 
-.settings-btn:hover {
-  border-color: #999;
+.settings-fab svg {
+  width: 20px;
+  height: 20px;
+}
+
+.settings-fab:hover {
   color: var(--text);
+  border-color: var(--sub-text);
 }
 
 .sub-list {
@@ -133,12 +190,12 @@ body {
   font-size: 13px;
   color: var(--sub-text);
   padding: 6px 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
 .sub-item-btn:hover {
-  background: #f5f5f5;
+  background: var(--hover-bg);
 }
 
 .sub-item-btn.is-active {
@@ -156,9 +213,9 @@ body {
 }
 
 .btn-order-toggle {
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
-  border: 1px solid #d8d8d8;
+  border: 1px solid var(--border);
 }
 
 .btn-order-toggle.is-active {
@@ -187,9 +244,9 @@ body {
 
 .btn-create-top {
   border: none;
-  background: #222;
-  color: #fff;
-  border-radius: 10px;
+  background: var(--invert-bg);
+  color: var(--invert-text);
+  border-radius: var(--radius-md);
   padding: 10px 18px;
   font-family: inherit;
   font-size: 13px;
@@ -254,7 +311,7 @@ body {
 
 .char-card {
   cursor: pointer;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--card-bg);
   border: 1px solid var(--border);
@@ -265,13 +322,13 @@ body {
 
 .char-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 20px var(--card-hover-shadow);
 }
 
 .char-card-image-wrap {
   width: 100%;
   aspect-ratio: 3 / 4;
-  background: #f0f0f0;
+  background: var(--hover-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -287,7 +344,7 @@ body {
 
 .char-card-placeholder-icon {
   width: 46%;
-  color: #c9c9c9;
+  color: var(--placeholder);
 }
 
 .char-card-info {
@@ -332,9 +389,9 @@ body {
 /* Add-character tile */
 .add-card {
   cursor: pointer;
-  border-radius: 14px;
-  border: 1px dashed #c9c9c9;
-  background: #fff;
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--placeholder);
+  background: var(--surface);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -348,7 +405,7 @@ body {
 }
 
 .add-card:hover {
-  border-color: #999;
+  border-color: var(--sub-text);
   color: var(--text);
 }
 
@@ -376,8 +433,8 @@ body {
 
 .modal-card {
   position: relative;
-  background: #fff;
-  border-radius: 20px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
   max-width: 480px;
   width: 100%;
   max-height: 86vh;
@@ -410,7 +467,7 @@ body {
 .modal-image {
   width: 100%;
   aspect-ratio: 1 / 1;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   object-fit: contain;
   background: transparent;
 }
@@ -418,7 +475,7 @@ body {
 .modal-image-placeholder {
   width: 100%;
   aspect-ratio: 1 / 1;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -428,7 +485,7 @@ body {
 
 .modal-image-placeholder svg {
   width: 52%;
-  color: #c9c9c9;
+  color: var(--placeholder);
 }
 
 .modal-name {
@@ -482,7 +539,7 @@ body {
   margin-bottom: 6px;
   font-size: 14px;
   line-height: 1.7;
-  color: #444;
+  color: var(--muted-text);
   white-space: pre-line;
 }
 
@@ -497,8 +554,8 @@ body {
   width: 100%;
   margin-top: 20px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: #fff;
+  border-radius: var(--radius-md);
+  background: var(--surface);
   padding: 10px;
   font-family: inherit;
   font-size: 13px;
@@ -508,7 +565,7 @@ body {
 }
 
 .modal-edit-btn:hover {
-  border-color: #999;
+  border-color: var(--sub-text);
 }
 
 .modal-delete-row {
@@ -545,6 +602,7 @@ body {
   font-size: 18px;
   font-weight: 700;
   margin: 0 0 2px;
+  color: var(--text);
 }
 
 .form-world-label {
@@ -565,12 +623,12 @@ body {
   width: 100%;
   margin-top: 6px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 9px 10px;
   font-family: inherit;
   font-size: 14px;
   color: var(--text);
-  background: #fff;
+  background: var(--surface);
 }
 
 .form-textarea {
@@ -599,9 +657,9 @@ body {
 .form-submit {
   width: 100%;
   border: none;
-  border-radius: 10px;
-  background: #222;
-  color: #fff;
+  border-radius: var(--radius-md);
+  background: var(--invert-bg);
+  color: var(--invert-text);
   padding: 12px;
   font-family: inherit;
   font-size: 14px;
@@ -616,7 +674,7 @@ body {
 }
 
 .form-submit-secondary {
-  background: #fff;
+  background: var(--surface);
   color: var(--sub-text);
   border: 1px solid var(--border);
 }
@@ -631,6 +689,10 @@ body {
     border-right: none;
     border-bottom: 1px solid var(--border);
     min-height: unset;
+    /* 좁은 화면에서는 위쪽 가로 탭 줄만 위에 붙여서, 갤러리를 내려도 계속 보이게 */
+    height: auto;
+    overflow-y: visible;
+    z-index: 20;
   }
   .content {
     padding: 24px 16px 60px;
@@ -641,13 +703,13 @@ body {
 .image-area {
   position: relative;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 14px 12px 12px;
   margin-bottom: 14px;
 }
 
 .template-select {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 4px 10px;
@@ -694,7 +756,7 @@ body {
 
 .field-manager-label-edit:focus {
   outline: none;
-  border-bottom-color: #222;
+  border-bottom-color: var(--text);
 }
 
 .template-select-row {
@@ -714,7 +776,7 @@ body {
 
 .template-mini-btn {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   border-radius: 999px;
   padding: 3px 9px;
   font-family: inherit;
@@ -725,7 +787,7 @@ body {
 }
 
 .template-mini-btn:hover {
-  border-color: #999;
+  border-color: var(--sub-text);
   color: var(--text);
 }
 
@@ -736,7 +798,7 @@ body {
 
 .managed-list-field {
   border: 1px dashed var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 12px;
   margin-bottom: 12px;
 }
@@ -752,7 +814,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: #eee;
+  background: var(--chip-bg);
   border-radius: 999px;
   padding: 3px 6px 3px 10px;
   font-size: 12px;
@@ -782,9 +844,9 @@ body {
 
 .managed-list-add-btn {
   border: none;
-  background: #222;
-  color: #fff;
-  border-radius: 8px;
+  background: var(--invert-bg);
+  color: var(--invert-text);
+  border-radius: var(--radius-md);
   padding: 8px 12px;
   font-family: inherit;
   font-size: 12px;
@@ -807,7 +869,7 @@ body {
 
 .pill {
   display: inline-block;
-  background: #eee;
+  background: var(--chip-bg);
   color: var(--text);
   font-size: 12px;
   padding: 2px 10px;
@@ -821,7 +883,7 @@ body {
   gap: 6px;
   align-items: center;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 6px 8px;
 }
 
@@ -829,7 +891,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: #eee;
+  background: var(--chip-bg);
   border-radius: 999px;
   padding: 3px 6px 3px 10px;
   font-size: 12px;
@@ -847,6 +909,8 @@ body {
 .tag-input-box {
   border: none;
   outline: none;
+  background: transparent;
+  color: var(--text);
   font-family: inherit;
   font-size: 13px;
   flex: 1;
@@ -856,7 +920,7 @@ body {
 
 .field-manager {
   border: 1px dashed var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 12px;
   margin-bottom: 14px;
 }
@@ -906,8 +970,8 @@ body {
   gap: 8px;
   margin-bottom: 10px;
   padding: 10px;
-  background: #f7f7f7;
-  border-radius: 8px;
+  background: var(--hover-bg);
+  border-radius: var(--radius-md);
 }
 
 .part-override-part {
@@ -921,8 +985,8 @@ body {
 
 .field-manager-move-btn {
   border: 1px solid var(--border);
-  background: #fff;
-  border-radius: 6px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
   width: 22px;
   height: 20px;
   line-height: 1;
@@ -933,7 +997,7 @@ body {
 }
 
 .field-manager-move-btn:hover:not(:disabled) {
-  border-color: #999;
+  border-color: var(--sub-text);
   color: var(--text);
 }
 
@@ -958,8 +1022,8 @@ body {
 
 .field-manager-del {
   border: 1px solid var(--border);
-  background: #fff;
-  border-radius: 8px;
+  background: var(--surface);
+  border-radius: var(--radius-md);
   padding: 6px 10px;
   font-family: inherit;
   font-size: 11px;
@@ -990,9 +1054,9 @@ body {
 
 .field-manager-add-btn {
   border: none;
-  background: #222;
-  color: #fff;
-  border-radius: 8px;
+  background: var(--invert-bg);
+  color: var(--invert-text);
+  border-radius: var(--radius-md);
   padding: 9px 12px;
   font-family: inherit;
   font-size: 12px;
@@ -1073,7 +1137,7 @@ body {
   margin-top: 10px;
   font-size: 14px;
   line-height: 1.6;
-  color: #444;
+  color: var(--muted-text);
 }
 
 /* ---------- 레이팅(별점) ---------- */
@@ -1128,7 +1192,7 @@ body {
 .richtext-wrap {
   margin-top: 6px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -1136,7 +1200,7 @@ body {
   display: flex;
   gap: 2px;
   padding: 6px;
-  background: #f7f7f7;
+  background: var(--hover-bg);
   border-bottom: 1px solid var(--border);
 }
 
@@ -1145,8 +1209,8 @@ body {
   height: 26px;
   padding: 0 5px;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: #fff;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
   font-family: inherit;
   font-size: 12px;
   color: var(--text);
@@ -1154,7 +1218,7 @@ body {
 }
 
 .richtext-btn:hover {
-  border-color: #999;
+  border-color: var(--sub-text);
 }
 
 .richtext-editable {
@@ -1191,9 +1255,9 @@ body {
   width: 64px;
   height: 64px;
   flex-shrink: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  background: #f0f0f0;
+  background: var(--hover-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1208,7 +1272,7 @@ body {
 
 .modal-entry-image-placeholder svg {
   width: 55%;
-  color: #c9c9c9;
+  color: var(--placeholder);
 }
 
 .modal-entry-text {
@@ -1224,7 +1288,7 @@ body {
 
 .modal-entry-desc {
   font-size: 13px;
-  color: #444;
+  color: var(--muted-text);
   margin: 0;
   line-height: 1.5;
 }
@@ -1241,7 +1305,7 @@ body {
   gap: 10px;
   align-items: flex-start;
   border: 1px dashed var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 10px;
 }
 
@@ -1249,8 +1313,8 @@ body {
   width: 64px;
   height: 64px;
   flex-shrink: 0;
-  border-radius: 8px;
-  background: #f0f0f0;
+  border-radius: var(--radius-md);
+  background: var(--hover-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1295,8 +1359,8 @@ body {
 .entry-del-btn {
   flex-shrink: 0;
   border: 1px solid var(--border);
-  background: #fff;
-  border-radius: 8px;
+  background: var(--surface);
+  border-radius: var(--radius-md);
   padding: 6px 10px;
   font-family: inherit;
   font-size: 11px;
@@ -1313,9 +1377,9 @@ body {
 .entry-add-btn {
   align-self: flex-start;
   border: none;
-  background: #222;
-  color: #fff;
-  border-radius: 8px;
+  background: var(--invert-bg);
+  color: var(--invert-text);
+  border-radius: var(--radius-md);
   padding: 9px 12px;
   font-family: inherit;
   font-size: 12px;
@@ -1332,7 +1396,7 @@ body {
   max-height: 50vh;
   overflow: hidden;
   background: #222;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   margin: 10px 0 12px;
 }
 
@@ -1409,13 +1473,9 @@ body {
   }
 
   .sub-item-btn.is-active {
-    background: #222;
-    color: #fff;
-    border-color: #222;
-  }
-
-  .settings-btn {
-    margin-top: 12px;
+    background: var(--invert-bg);
+    color: var(--invert-text);
+    border-color: var(--invert-bg);
   }
 
   .content-header {
@@ -1447,7 +1507,7 @@ body {
     max-width: 100%;
     width: 100%;
     max-height: 92vh;
-    border-radius: 18px 18px 0 0;
+    border-radius: 12px 12px 0 0;
     padding: 24px 16px 32px;
   }
 
@@ -1500,3 +1560,117 @@ body {
     font-size: 16px; /* iOS에서 입력창 터치 시 자동 확대되는 것을 방지 */
   }
 }
+
+/* 저장 실패 문구를 눈에 띄게 잠깐 강조 */
+.form-error-flash {
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--error-bg);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  transition: background 0.3s, font-size 0.3s;
+}
+
+/* 일부 캐릭터 파일만 못 불러왔을 때 갤러리 위에 띄우는 안내 */
+.partial-load-warn {
+  text-align: left;
+  color: var(--warn-text);
+  background: var(--warn-bg);
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+}
+
+/* ---------- 설정 모달 ---------- */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+}
+.settings-row-label { font-size: 15px; color: var(--text); }
+.settings-divider {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 10px 0;
+}
+.toggle-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--border);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s;
+}
+.toggle-switch.is-on { background: #5b7fb5; }
+.toggle-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+.toggle-switch.is-on .toggle-switch-knob { transform: translateX(18px); }
+
+.settings-block { padding: 12px 0; }
+.settings-block + .settings-block { border-top: 1px solid var(--border); }
+.settings-block-title { font-size: 14px; font-weight: 600; margin: 0 0 6px; color: var(--text); }
+.settings-block-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
+.settings-notice { margin: 6px 0 0; font-size: 12px; color: var(--muted-text); min-height: 1em; }
+.settings-notice.is-error { color: #c0504d; }
+.settings-preview { display: block; max-width: 100%; max-height: 64px; margin: 6px 0; object-fit: contain; }
+.settings-preview-small { max-height: 32px; }
+.settings-small-btn {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.settings-small-btn:hover { background: var(--hover-bg); }
+.settings-small-btn.is-primary { background: var(--invert-bg); color: var(--invert-text); border-color: var(--invert-bg); }
+.settings-small-btn.is-danger { color: #c0504d; }
+.settings-back {
+  border: 0; background: none; padding: 0 0 8px; cursor: pointer;
+  font-family: inherit; font-size: 13px; color: var(--muted-text);
+}
+
+.seg-group { display: flex; gap: 0; margin: 4px 0 8px; }
+.seg-btn {
+  flex: 1; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  font-family: inherit; font-size: 13px; padding: 7px 0; cursor: pointer;
+}
+.seg-btn:first-child { border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.seg-btn:last-child { border-radius: 0 var(--radius-md) var(--radius-md) 0; border-left: 0; }
+.seg-btn.is-active { background: #5b7fb5; border-color: #5b7fb5; color: #fff; }
+
+.token-guide { font-size: 13px; line-height: 1.65; color: var(--text); margin-bottom: 8px; }
+.token-guide p { margin: 0 0 6px; }
+.token-guide ol { margin: 0 0 6px; padding-left: 20px; }
+.token-link { color: inherit; text-decoration: underline; }
+.token-note { color: var(--muted-text); font-size: 12px; }
+.token-input.is-registered::placeholder { color: #5b7fb5; opacity: 1; font-weight: 600; }
+
+.logo-img { display: block; max-height: 48px; max-width: 100%; }
+
+.cat-item { border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 8px; padding: 8px; }
+.cat-row, .tpl-row-top, .cat-add-row, .tpl-add-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cat-row .form-input, .tpl-row-top .form-input { flex: 1; min-width: 90px; margin-top: 0; }
+.cat-add-row, .tpl-add-row { margin-top: 10px; }
+.cat-add-row .form-input, .tpl-add-row .form-input { flex: 1; min-width: 90px; margin-top: 0; width: auto; }
+.tpl-editor { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); }
+.tpl-row { padding: 6px 0; }
+.tpl-row .field-category-roles { margin: 4px 0 0 34px; }
