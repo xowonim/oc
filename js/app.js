@@ -7,6 +7,11 @@
   const WORLDS_PATH = 'data/worlds.json';
   const ASSETS_DIR = 'assets';
   const TOKEN_KEY = 'oc_gh_token';
+  const SITE_PATH = 'data/site.json';
+  const DARK_MODE_KEY = 'oc_dark_mode';
+  const EDIT_MODE_KEY = 'oc_edit_mode';
+  const SITE_CACHE_KEY = 'oc_site_cache';
+  const DEFAULT_SITE_TITLE = "xowon's OC";
 
   // 이미지가 방금 막 저장된 직후에는 깃허브 페이지(배포된 사이트)가 다시 빌드될 때까지
   // (몇십 초~1~2분) 그 이미지 파일 자체가 아직 안 떠서, 사진이 깨진 것처럼(물음표 아이콘)
@@ -27,7 +32,6 @@
   const subListWrapEl = document.getElementById('subListWrap');
   const galleryEl = document.getElementById('gallery');
   const logoHomeEl = document.getElementById('logoHome');
-  const settingsBtnEl = document.getElementById('settingsBtn');
   const createTopBtnEl = document.getElementById('createTopBtn');
   const orderEditBtnEl = document.getElementById('orderEditBtn');
   const modalOverlay = document.getElementById('modalOverlay');
@@ -45,6 +49,9 @@
   let sortableInstances = [];
   let charactersLoadFailed = false;
   let charactersLoadError = '';
+  // 목록 요청은 성공했는데 일부 캐릭터 파일만 네트워크 문제로 못 불러온 경우의 이름들.
+  // (전에는 그 캐릭터만 아무 표시 없이 목록에서 빠져서 "사라진 것"처럼 보였다.)
+  let partiallyFailedCharacterNames = [];
 
   function getToken() {
     return localStorage.getItem(TOKEN_KEY) || '';
@@ -52,6 +59,76 @@
   function setToken(t) {
     if (t) localStorage.setItem(TOKEN_KEY, t);
     else localStorage.removeItem(TOKEN_KEY);
+  }
+
+  // ---- 다크 모드 / 편집 모드 ----
+  function isDarkModeOn() {
+    try { return localStorage.getItem(DARK_MODE_KEY) === '1'; } catch (e) { return false; }
+  }
+  function applyDarkMode() {
+    document.documentElement.setAttribute('data-theme', isDarkModeOn() ? 'dark' : 'light');
+  }
+  function setDarkModeOn(on) {
+    try { localStorage.setItem(DARK_MODE_KEY, on ? '1' : '0'); } catch (e) {}
+    applyDarkMode();
+  }
+  // 편집 모드는 기본이 꺼짐. 토큰이 있을 때만 켤 수 있다.
+  function isEditModeOn() {
+    try { return localStorage.getItem(EDIT_MODE_KEY) === '1'; } catch (e) { return false; }
+  }
+  function setEditModeOn(on) {
+    try { localStorage.setItem(EDIT_MODE_KEY, on ? '1' : '0'); } catch (e) {}
+    if (!on) editOrderMode = false;
+  }
+  function canEditNow() {
+    return !!getToken() && isEditModeOn();
+  }
+
+  // ---- 사이트 설정(제목/로고/파비콘): data/site.json ----
+  let siteConfig = {};
+  function readSiteCache() {
+    try { return JSON.parse(localStorage.getItem(SITE_CACHE_KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function writeSiteCache(d) {
+    try { localStorage.setItem(SITE_CACHE_KEY, JSON.stringify(d)); } catch (e) {}
+  }
+  function applySiteConfig(d) {
+    siteConfig = d || {};
+    document.title = siteConfig.title || DEFAULT_SITE_TITLE;
+    const logo = siteConfig.logo || {};
+    if (logo.type === 'image' && logo.image) {
+      logoHomeEl.textContent = '';
+      const img = document.createElement('img');
+      img.className = 'logo-img';
+      img.alt = siteConfig.title || DEFAULT_SITE_TITLE;
+      img.src = assetUrl(logo.image);
+      logoHomeEl.appendChild(img);
+    } else {
+      logoHomeEl.textContent = (logo.type === 'text' && logo.text) ? logo.text : (siteConfig.title || DEFAULT_SITE_TITLE);
+    }
+    let link = document.getElementById('siteFavicon');
+    if (siteConfig.favicon) {
+      if (!link) {
+        link = document.createElement('link');
+        link.id = 'siteFavicon';
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = assetUrl(siteConfig.favicon);
+    } else if (link) {
+      link.remove();
+    }
+  }
+  async function loadSite() {
+    applySiteConfig(readSiteCache());
+    try {
+      const res = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${SITE_PATH}?t=${Date.now()}`, { cache: 'no-store' });
+      if (res.status === 404) { writeSiteCache({}); applySiteConfig({}); return; }
+      if (!res.ok) return;
+      const d = await res.json();
+      writeSiteCache(d);
+      applySiteConfig(d);
+    } catch (e) { /* 캐시된 값을 그대로 쓴다 */ }
   }
 
   function worldById(id) {
@@ -239,20 +316,28 @@
         (e) => e.type === 'file' && e.name.endsWith('.json') && !e.name.startsWith('_')
       );
 
-      const results = await Promise.all(
-        jsonFiles.map(async (f) => {
-          try {
-            const raw = await fetch(f.download_url);
-            const data = await raw.json();
-            data._path = f.path;
-            data._sha = f.sha;
-            return data;
-          } catch (err) {
-            console.warn('캐릭터 파일을 불러오지 못했어요:', f.name, err);
-            return null;
+      async function fetchCharacterFile(f, attemptsLeft) {
+        try {
+          const raw = await fetch(f.download_url, { cache: 'no-store' });
+          if (!raw.ok) throw new Error(`HTTP ${raw.status}`);
+          const data = await raw.json();
+          data._path = f.path;
+          data._sha = f.sha;
+          return data;
+        } catch (err) {
+          if (attemptsLeft > 0) {
+            await new Promise((r) => setTimeout(r, 300));
+            return fetchCharacterFile(f, attemptsLeft - 1);
           }
-        })
-      );
+          console.warn('캐릭터 파일을 불러오지 못했어요:', f.name, err);
+          return null;
+        }
+      }
+
+      const results = await Promise.all(jsonFiles.map((f) => fetchCharacterFile(f, 2)));
+      partiallyFailedCharacterNames = jsonFiles
+        .filter((f, idx) => results[idx] === null)
+        .map((f) => (f.name || '').replace(/\.json$/, ''));
       charactersLoadFailed = false;
       charactersLoadError = '';
       return results.filter(Boolean);
@@ -260,6 +345,7 @@
       console.warn('GitHub API로 캐릭터 목록을 불러오지 못했어요. 로컬 데이터로 대체합니다.', err);
       charactersLoadFailed = true;
       charactersLoadError = err.message || String(err);
+      partiallyFailedCharacterNames = [];
       try {
         const res = await fetch('data/characters.fallback.json');
         if (!res.ok) return [];
@@ -577,7 +663,7 @@
   // 안 보이는 채로 계속 켜져있지 않게 한다.
   function updateOrderEditButton() {
     if (!orderEditBtnEl) return;
-    const canEdit = activeWorld !== 'all' && !!getToken();
+    const canEdit = activeWorld !== 'all' && canEditNow();
     orderEditBtnEl.style.display = canEdit ? '' : 'none';
     if (!canEdit && editOrderMode) {
       editOrderMode = false;
@@ -696,6 +782,13 @@
       galleryEl.appendChild(warn);
       refreshSortableInstances(null);
       return;
+    }
+
+    if (partiallyFailedCharacterNames.length > 0) {
+      const warn = document.createElement('p');
+      warn.className = 'empty-msg partial-load-warn';
+      warn.textContent = `${partiallyFailedCharacterNames.join(', ')} 캐릭터를 불러오지 못했어요(네트워크 문제로 보여요 — 저장된 내용이 지워진 건 아니에요). 새로고침해보세요.`;
+      galleryEl.appendChild(warn);
     }
 
     const world = activeWorld === 'all' ? null : worldById(activeWorld);
@@ -982,7 +1075,7 @@
     const profileImg = c.profileImage || c.image;
     // 수정하기/캐릭터 삭제는 저장용 개인 토큰을 등록해둔 사람(=실제 운영자)한테만 보이게 한다.
     // 그냥 구경하러 온 사람 화면에는 이 버튼들이 아예 나타나지 않는다.
-    const canEdit = !!getToken();
+    const canEdit = canEditNow();
 
     modalBody.innerHTML = `
       <div class="modal-image-wrap" id="modalImageWrap"></div>
@@ -1089,7 +1182,7 @@
     try {
       localStorage.setItem(
         draftStorageKey(existing, world),
-        JSON.stringify({ savedAt: Date.now(), snap: snapshotFormValues(world) })
+        JSON.stringify({ savedAt: Date.now(), sha: existing ? existing._sha : null, snap: snapshotFormValues(world) })
       );
     } catch (e) {
       // 저장 공간이 꽉 찼거나 브라우저가 막아둔 경우: 임시저장이 실패해도 작업 자체는
@@ -1994,7 +2087,7 @@
   async function applyWorldsChange(mutateFn) {
     const token = getToken();
     if (!token) {
-      window.alert('세계관/항목 구조를 저장하려면 먼저 "⚙ 저장 설정"에서 토큰을 등록해주세요.');
+      window.alert('세계관/항목 구조를 저장하려면 먼저 왼쪽 아래 설정 아이콘에서 토큰을 등록해주세요.');
       return false;
     }
     const maxAttempts = 5;
@@ -2288,7 +2381,13 @@
     const w = world || (existing ? worldById(existing.world) : worlds[0]);
     // 이 캐릭터(수정 중이면 그 id, 새로 만드는 중이면 이 세계관)로 임시저장해둔 내용이
     // 있으면 불러온다 — 저장된 캐릭터 값(existing) 대신 이 초안으로 폼을 채운다.
-    const draft = loadDraft(existing, w);
+    let draft = loadDraft(existing, w);
+    // 임시저장본이 만들어진 뒤에 그 캐릭터가 이미 다시 저장됐다면(sha가 달라졌다면) 그
+    // 임시저장본은 낡은 것이다. 그대로 불러오면 최신 내용을 옛날 내용이 덮어쓰게 되므로 버린다.
+    if (draft && isEdit && draft.sha !== existing._sha) {
+      clearDraft(existing, w);
+      draft = null;
+    }
     const renderData = draft ? draft.snap : existing;
     const customValuesSource = draft ? draft.snap.fields : (isEdit ? existing.fields : null);
     // 폼을 다시 열 때(초안 버리고 다시 열기 등) 이전에 돌고 있던 임시저장 타이머가
@@ -2725,54 +2824,631 @@
     }
   }
 
-  // ---------- 설정(토큰) 모달 ----------
+  // ---------- 설정 모달 ----------
+  // 토큰이 없을 때: 다크 모드 / 토큰 설정
+  // 토큰이 있을 때: 다크 모드 / (구분선) / 편집 모드 / [편집 모드가 켜져 있을 때만: 사이트 제목,
+  // 로고, 파비콘, 카테고리·템플릿 설정] / (구분선) / 토큰 설정
   const settingsOverlay = document.getElementById('settingsOverlay');
   const settingsBody = document.getElementById('settingsBody');
   const settingsClose = document.getElementById('settingsClose');
+  const settingsFabEl = document.getElementById('settingsFab');
+
+  // 'main'(기본 설정 화면) 또는 'categories'(카테고리/템플릿 설정 화면)
+  let settingsView = 'main';
+  // 카테고리/템플릿 설정 화면에서 지금 템플릿(입력 항목 목록)을 펼쳐둔 카테고리 id
+  let openTemplateWorldId = null;
 
   function closeSettingsModal() {
     settingsOverlay.classList.remove('is-open');
+    settingsView = 'main';
+    openTemplateWorldId = null;
   }
   settingsClose.addEventListener('click', closeSettingsModal);
   settingsOverlay.addEventListener('click', (e) => {
     if (e.target === settingsOverlay) closeSettingsModal();
   });
 
-  settingsBtnEl.addEventListener('click', () => {
-    settingsBody.innerHTML = `
-      <h2 class="form-title">깃허브 저장 설정</h2>
-      <p class="form-hint">
-        "+ 캐릭터 생성"으로 사이트에서 바로 저장하려면 깃허브 개인 토큰이 필요해요.<br>
-        <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">여기서 새 토큰 발급</a> →
-        Repository access를 이 저장소(${GITHUB_OWNER}/${GITHUB_REPO})로 지정 →
-        Permissions에서 <b>Contents: Read and write</b> 선택 → 생성 후 아래에 붙여넣기.
-      </p>
-      <label class="form-label">개인 토큰
-        <input type="password" class="form-input" id="tokenInput" value="${escapeAttr(getToken())}">
-      </label>
-      <p class="form-error" id="settingsError"></p>
-      <button class="form-submit" id="tokenSave">저장</button>
-      <button class="form-submit form-submit-secondary" id="tokenClear">토큰 삭제</button>
+  function toggleSwitchHtml(id, isOn) {
+    return `<button type="button" class="toggle-switch${isOn ? ' is-on' : ''}" id="${id}" role="switch" aria-checked="${isOn}"><span class="toggle-switch-knob"></span></button>`;
+  }
+
+  function setNotice(id, text, isError) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle('is-error', !!isError);
+  }
+
+  // 사이트 설정(제목/로고/파비콘) 입력 영역. 편집 모드가 켜져 있을 때만 그려진다.
+  function siteSettingsHtml() {
+    const logo = siteConfig.logo || {};
+    const logoMode = logo.type === 'image' ? 'image' : 'text';
+    const currentLogoImg = logo.image
+      ? `<img class="settings-preview" src="${escapeAttr(assetUrl(logo.image))}" alt="현재 로고">`
+      : '';
+    const currentFavicon = siteConfig.favicon
+      ? `<img class="settings-preview settings-preview-small" src="${escapeAttr(assetUrl(siteConfig.favicon))}" alt="현재 파비콘">`
+      : '';
+    return `
+      <div class="settings-block">
+        <p class="settings-block-title">사이트 제목</p>
+        <input type="text" class="form-input" id="siteTitleInput" value="${escapeAttr(siteConfig.title || '')}" placeholder="${escapeAttr(DEFAULT_SITE_TITLE)}">
+        <div class="settings-block-actions">
+          <button type="button" class="settings-small-btn is-primary" id="siteTitleSave">저장</button>
+        </div>
+        <p class="settings-notice" id="siteTitleNotice"></p>
+      </div>
+
+      <div class="settings-block">
+        <p class="settings-block-title">로고 설정</p>
+        <div class="seg-group" id="logoModeGroup">
+          <button type="button" class="seg-btn${logoMode === 'image' ? ' is-active' : ''}" data-mode="image">이미지</button>
+          <button type="button" class="seg-btn${logoMode === 'text' ? ' is-active' : ''}" data-mode="text">글씨</button>
+        </div>
+        <div id="logoPaneImage" ${logoMode === 'image' ? '' : 'hidden'}>
+          ${currentLogoImg}
+          <input type="file" accept="image/*" class="form-input" id="logoFileInput">
+        </div>
+        <div id="logoPaneText" ${logoMode === 'text' ? '' : 'hidden'}>
+          <input type="text" class="form-input" id="logoTextInput" value="${escapeAttr(logo.text || '')}" placeholder="${escapeAttr(DEFAULT_SITE_TITLE)}">
+        </div>
+        <div class="settings-block-actions">
+          <button type="button" class="settings-small-btn" id="logoReset">기본으로</button>
+          <button type="button" class="settings-small-btn is-primary" id="logoSave">저장</button>
+        </div>
+        <p class="settings-notice" id="logoNotice"></p>
+      </div>
+
+      <div class="settings-block">
+        <p class="settings-block-title">파비콘 설정</p>
+        ${currentFavicon}
+        <input type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/x-icon,image/vnd.microsoft.icon" class="form-input" id="faviconFileInput">
+        <div class="settings-block-actions">
+          <button type="button" class="settings-small-btn" id="faviconReset">기본으로</button>
+          <button type="button" class="settings-small-btn is-primary" id="faviconSave">저장</button>
+        </div>
+        <p class="settings-notice" id="faviconNotice"></p>
+      </div>
+
+      <div class="settings-block">
+        <p class="settings-block-title">카테고리 / 템플릿 설정</p>
+        <button type="button" class="form-submit form-submit-secondary" id="openCategorySettings">열기</button>
+      </div>
     `;
+  }
+
+  function tokenSettingsHtml(hasToken) {
+    return `
+      <div class="settings-block">
+        <p class="settings-block-title">토큰 설정</p>
+        <div class="token-guide">
+          <p>토큰은 사이트 내에서 편집과 저장을 할 수 있는 기능을 제공해요!</p>
+          <p><a class="token-link" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">이 곳</a>에서 토큰을 발급해 주세요.</p>
+          <ol>
+            <li>Repository access를 사용 중인 저장소로 지정해주세요.</li>
+            <li>Permissions에서 <b>Contents: Read and write</b>를 선택해주세요.</li>
+            <li>토큰을 생성 후, 아래에 붙여넣고 저장해 주세요.</li>
+          </ol>
+          <p class="token-note">(* 토큰이 생성된 페이지를 떠난 후에는 토큰을 다시 확인할 수 없으니, 필요하시다면 꼭..!! 다른 곳에 토큰을 백업해 주세요!)</p>
+        </div>
+        <input type="password" class="form-input token-input${hasToken ? ' is-registered' : ''}" id="tokenInput" autocomplete="off" placeholder="${hasToken ? '토큰이 등록되어 있어요!' : ''}">
+        <p class="form-error" id="settingsError"></p>
+        <button class="form-submit" id="tokenSave">저장</button>
+        ${hasToken ? '<button class="form-submit form-submit-secondary" id="tokenClear">토큰 삭제</button>' : ''}
+      </div>
+    `;
+  }
+
+  // 다크모드/편집모드/토큰이 바뀔 때마다 모달을 닫지 않고 안쪽만 다시 그려서 바로 반영한다.
+  function renderSettingsBody() {
+    if (settingsView === 'categories') {
+      renderCategorySettings();
+      return;
+    }
+    const hasToken = !!getToken();
+    const editOn = hasToken && isEditModeOn();
+
+    settingsBody.innerHTML = `
+      <h2 class="form-title">설정</h2>
+
+      <div class="settings-row">
+        <span class="settings-row-label">다크 모드</span>
+        ${toggleSwitchHtml('darkModeToggle', isDarkModeOn())}
+      </div>
+
+      ${hasToken ? `
+        <hr class="settings-divider">
+        <div class="settings-row">
+          <span class="settings-row-label">편집 모드</span>
+          ${toggleSwitchHtml('editModeToggle', isEditModeOn())}
+        </div>
+        ${editOn ? siteSettingsHtml() : ''}
+        <hr class="settings-divider">
+      ` : ''}
+
+      ${tokenSettingsHtml(hasToken)}
+    `;
+
+    document.getElementById('darkModeToggle').addEventListener('click', () => {
+      setDarkModeOn(!isDarkModeOn());
+      renderSettingsBody();
+    });
+
+    const editToggleEl = document.getElementById('editModeToggle');
+    if (editToggleEl) {
+      editToggleEl.addEventListener('click', () => {
+        setEditModeOn(!isEditModeOn());
+        refreshEditUi();
+        renderSettingsBody();
+      });
+    }
+
+    if (editOn) wireSiteSettings();
+
     document.getElementById('tokenSave').addEventListener('click', () => {
       const v = document.getElementById('tokenInput').value.trim();
       if (!v) {
-        document.getElementById('settingsError').textContent = '토큰을 입력해주세요.';
+        document.getElementById('settingsError').textContent = hasToken
+          ? '바꾸려면 새 토큰을 붙여넣어 주세요.'
+          : '토큰을 입력해주세요.';
         return;
       }
       setToken(v);
-      refreshCreateButtonVisibility();
-      renderGallery();
-      closeSettingsModal();
+      refreshEditUi();
+      renderSettingsBody();
     });
-    document.getElementById('tokenClear').addEventListener('click', () => {
-      setToken('');
-      refreshCreateButtonVisibility();
-      renderGallery();
-      closeSettingsModal();
+    const tokenClearEl = document.getElementById('tokenClear');
+    if (tokenClearEl) {
+      tokenClearEl.addEventListener('click', () => {
+        setToken('');
+        refreshEditUi();
+        renderSettingsBody();
+      });
+    }
+  }
+
+  // 편집 모드/토큰이 바뀌면, 그에 따라 보이거나 숨겨져야 하는 버튼들(캐릭터 생성, 순서 편집)을
+  // 다시 정리하고 갤러리를 다시 그린다.
+  function refreshEditUi() {
+    refreshCreateButtonVisibility();
+    renderGallery();
+  }
+
+  function wireSiteSettings() {
+    // ---- 사이트 제목 ----
+    document.getElementById('siteTitleSave').addEventListener('click', async () => {
+      const v = document.getElementById('siteTitleInput').value.trim();
+      setNotice('siteTitleNotice', '저장하는 중...', false);
+      const r = await saveSiteWithMutation((d) => {
+        if (v) d.title = v;
+        else delete d.title;
+      });
+      setNotice('siteTitleNotice', r.ok ? '저장했어요.' : '저장에 실패했어요: ' + r.message, !r.ok);
     });
-    settingsOverlay.classList.add('is-open');
-  });
+
+    // ---- 로고 ----
+    let logoMode = (siteConfig.logo && siteConfig.logo.type === 'image') ? 'image' : 'text';
+    const modeGroup = document.getElementById('logoModeGroup');
+    modeGroup.querySelectorAll('.seg-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        logoMode = btn.dataset.mode;
+        modeGroup.querySelectorAll('.seg-btn').forEach((b) => b.classList.toggle('is-active', b === btn));
+        document.getElementById('logoPaneImage').hidden = logoMode !== 'image';
+        document.getElementById('logoPaneText').hidden = logoMode !== 'text';
+      });
+    });
+    document.getElementById('logoSave').addEventListener('click', async () => {
+      const prevImage = siteConfig.logo && siteConfig.logo.image;
+      let newImagePath = null;
+      if (logoMode === 'text') {
+        const text = document.getElementById('logoTextInput').value.trim();
+        if (!text) { setNotice('logoNotice', '로고로 쓸 글씨를 입력해주세요.', true); return; }
+        setNotice('logoNotice', '저장하는 중...', false);
+        const r = await saveSiteWithMutation((d) => {
+          d.logo = Object.assign({}, d.logo, { type: 'text', text });
+        });
+        setNotice('logoNotice', r.ok ? '저장했어요.' : '저장에 실패했어요: ' + r.message, !r.ok);
+        return;
+      }
+      const file = document.getElementById('logoFileInput').files[0];
+      if (!file && !prevImage) { setNotice('logoNotice', '로고로 쓸 이미지를 선택해주세요.', true); return; }
+      setNotice('logoNotice', '저장하는 중...', false);
+      try {
+        if (file) newImagePath = await uploadSiteImage(file, 'logo');
+      } catch (err) {
+        setNotice('logoNotice', '이미지를 올리지 못했어요: ' + err.message, true);
+        return;
+      }
+      const r = await saveSiteWithMutation((d) => {
+        d.logo = Object.assign({}, d.logo, { type: 'image' });
+        if (newImagePath) d.logo.image = newImagePath;
+      });
+      if (r.ok && newImagePath && prevImage && prevImage !== newImagePath) deleteSiteImageQuietly(prevImage);
+      setNotice('logoNotice', r.ok ? '저장했어요.' : '저장에 실패했어요: ' + r.message, !r.ok);
+      if (r.ok) renderSettingsBody();
+    });
+    document.getElementById('logoReset').addEventListener('click', async () => {
+      const prevImage = siteConfig.logo && siteConfig.logo.image;
+      setNotice('logoNotice', '저장하는 중...', false);
+      const r = await saveSiteWithMutation((d) => { delete d.logo; });
+      if (r.ok && prevImage) deleteSiteImageQuietly(prevImage);
+      if (r.ok) renderSettingsBody();
+      else setNotice('logoNotice', '저장에 실패했어요: ' + r.message, true);
+    });
+
+    // ---- 파비콘 ----
+    document.getElementById('faviconSave').addEventListener('click', async () => {
+      const file = document.getElementById('faviconFileInput').files[0];
+      if (!file) { setNotice('faviconNotice', '파비콘으로 쓸 이미지를 선택해주세요.', true); return; }
+      const prevFavicon = siteConfig.favicon;
+      setNotice('faviconNotice', '저장하는 중...', false);
+      let path;
+      try {
+        path = await uploadSiteImage(file, 'favicon');
+      } catch (err) {
+        setNotice('faviconNotice', '이미지를 올리지 못했어요: ' + err.message, true);
+        return;
+      }
+      const r = await saveSiteWithMutation((d) => { d.favicon = path; });
+      if (r.ok && prevFavicon && prevFavicon !== path) deleteSiteImageQuietly(prevFavicon);
+      if (r.ok) renderSettingsBody();
+      else setNotice('faviconNotice', '저장에 실패했어요: ' + r.message, true);
+    });
+    document.getElementById('faviconReset').addEventListener('click', async () => {
+      const prevFavicon = siteConfig.favicon;
+      setNotice('faviconNotice', '저장하는 중...', false);
+      const r = await saveSiteWithMutation((d) => { delete d.favicon; });
+      if (r.ok && prevFavicon) deleteSiteImageQuietly(prevFavicon);
+      if (r.ok) renderSettingsBody();
+      else setNotice('faviconNotice', '저장에 실패했어요: ' + r.message, true);
+    });
+
+    document.getElementById('openCategorySettings').addEventListener('click', () => {
+      settingsView = 'categories';
+      renderSettingsBody();
+    });
+  }
+
+  // ---------- 사이트 설정(제목/로고/파비콘) 저장소 연동 ----------
+  async function fetchSiteForSave() {
+    const token = getToken();
+    const headers = { Accept: 'application/vnd.github+json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(
+      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${SITE_PATH}?ref=${GITHUB_BRANCH}`,
+      { headers, cache: 'no-store' }
+    );
+    if (res.status === 404) return { data: {}, sha: undefined };
+    if (!res.ok) throw new Error(`사이트 설정 파일을 불러오지 못했어요 (${res.status})`);
+    const body = await res.json();
+    return { data: JSON.parse(b64DecodeUnicode(body.content)), sha: body.sha };
+  }
+
+  // 동시에 여러 번 눌러도 한 번에 하나씩 순서대로 저장되게 줄을 세운다. 저장할 때마다 깃허브의
+  // 최신 내용을 받아서 그 위에 이번 변경만 적용하므로, 제목/로고/파비콘이 서로 덮어쓰지 않는다.
+  let siteSaveQueue = Promise.resolve();
+  function saveSiteWithMutation(mutateFn) {
+    const run = siteSaveQueue.then(async () => {
+      if (!getToken()) return { ok: false, message: '토큰이 없어요.' };
+      const maxAttempts = 4;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          const { data, sha } = await fetchSiteForSave();
+          mutateFn(data);
+          await githubPutFile(SITE_PATH, b64EncodeUnicode(JSON.stringify(data, null, 2)), 'Update site settings', sha);
+          applySiteConfig(data);
+          writeSiteCache(data);
+          return { ok: true };
+        } catch (err) {
+          const isConflict = /sha|does not match|expected/i.test(err.message || '');
+          if (!isConflict || attempt === maxAttempts - 1) {
+            console.error(err);
+            return { ok: false, message: err.message || '알 수 없는 오류' };
+          }
+          await new Promise((r) => setTimeout(r, 150 + Math.random() * 250));
+        }
+      }
+      return { ok: false, message: '알 수 없는 오류' };
+    });
+    siteSaveQueue = run.catch(() => ({ ok: false }));
+    return run;
+  }
+
+  async function uploadSiteImage(file, kind) {
+    const ext = ((file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '')) || 'png';
+    const path = `${ASSETS_DIR}/site/${kind}-${Date.now()}.${ext}`;
+    await githubPutFile(path, await fileToBase64(file), `Upload site ${kind}`);
+    return path;
+  }
+
+  // 새 이미지로 바꾸거나 기본으로 되돌린 뒤, 더 안 쓰는 예전 이미지 파일은 저장소에서 지운다.
+  // 지우다 실패해도 사이트 동작에는 영향이 없으니 조용히 넘어간다.
+  async function deleteSiteImageQuietly(path) {
+    try {
+      await githubDeleteFile(path, 'Remove unused site image');
+    } catch (err) {
+      console.warn('예전 사이트 이미지를 지우지 못했어요:', path, err);
+    }
+  }
+
+  // ---------- 카테고리 / 템플릿 설정 화면 ----------
+  const FIELD_TYPE_LABELS = {
+    text: '텍스트', tags: '태그', textarea: '긴 글', collapse: '접은 글',
+    rating: '레이팅', entries: '엔트리', category: '분류',
+  };
+  let catBusy = false;
+
+  // 카테고리(=worlds.json의 세계관) 구조를 바꾸고, 사이드바/갤러리/이 화면을 같이 갱신한다.
+  async function catMutate(mutateFn) {
+    if (catBusy) return false;
+    catBusy = true;
+    const ok = await saveWorldsWithMutation(mutateFn);
+    catBusy = false;
+    if (activeWorld !== 'all' && !worldById(activeWorld)) {
+      activeWorld = 'all';
+      activeSubFilter = null;
+    }
+    renderSidebar();
+    renderGallery();
+    renderCategorySettings();
+    return ok;
+  }
+
+  function makeEl(tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text != null) el.textContent = text;
+    return el;
+  }
+
+  function renderCategorySettings() {
+    settingsBody.innerHTML = '';
+    const back = makeEl('button', 'settings-back', '← 설정으로');
+    back.type = 'button';
+    back.addEventListener('click', () => {
+      settingsView = 'main';
+      renderSettingsBody();
+    });
+    settingsBody.appendChild(back);
+    settingsBody.appendChild(makeEl('h2', 'form-title', '카테고리 / 템플릿 설정'));
+    settingsBody.appendChild(makeEl('p', 'form-hint', '카테고리의 순서와 이름을 바꾸고, 각 카테고리의 프로필 템플릿(입력 항목)을 고칠 수 있어요. 바꾸는 즉시 저장돼요.'));
+
+    const list = makeEl('div', 'cat-list');
+    worlds.forEach((w, idx) => {
+      const item = makeEl('div', 'cat-item');
+      const row = makeEl('div', 'cat-row');
+
+      const moveWrap = makeEl('div', 'field-manager-move');
+      const up = makeEl('button', 'field-manager-move-btn', '▲');
+      up.type = 'button';
+      up.disabled = idx === 0;
+      up.addEventListener('click', () => catMutate((fw) => {
+        const i = fw.findIndex((x) => x.id === w.id);
+        if (i > 0) { const [it] = fw.splice(i, 1); fw.splice(i - 1, 0, it); }
+      }));
+      const down = makeEl('button', 'field-manager-move-btn', '▼');
+      down.type = 'button';
+      down.disabled = idx === worlds.length - 1;
+      down.addEventListener('click', () => catMutate((fw) => {
+        const i = fw.findIndex((x) => x.id === w.id);
+        if (i !== -1 && i < fw.length - 1) { const [it] = fw.splice(i, 1); fw.splice(i + 1, 0, it); }
+      }));
+      moveWrap.appendChild(up);
+      moveWrap.appendChild(down);
+      row.appendChild(moveWrap);
+
+      const nameInput = makeEl('input', 'form-input cat-name-input');
+      nameInput.type = 'text';
+      nameInput.value = w.name;
+      nameInput.addEventListener('change', () => {
+        const v = nameInput.value.trim();
+        if (!v || v === w.name) { nameInput.value = w.name; return; }
+        catMutate((fw) => {
+          const t = fw.find((x) => x.id === w.id);
+          if (t) { t.name = v; t.shortName = v; }
+        });
+      });
+      row.appendChild(nameInput);
+
+      const isOpen = openTemplateWorldId === w.id;
+      const tplBtn = makeEl('button', 'settings-small-btn' + (isOpen ? ' is-primary' : ''), isOpen ? '템플릿 닫기' : '템플릿');
+      tplBtn.type = 'button';
+      tplBtn.addEventListener('click', () => {
+        openTemplateWorldId = isOpen ? null : w.id;
+        renderCategorySettings();
+      });
+      row.appendChild(tplBtn);
+
+      const delBtn = makeEl('button', 'settings-small-btn is-danger', '삭제');
+      delBtn.type = 'button';
+      delBtn.addEventListener('click', () => {
+        if (worlds.length <= 1) {
+          window.alert('카테고리가 하나뿐이라 삭제할 수 없어요.');
+          return;
+        }
+        if (!window.confirm(`"${w.name}" 카테고리를 삭제할까요? (이 카테고리로 만든 기존 캐릭터의 데이터는 남지만, 화면에서 이 카테고리 자체는 사라져요)`)) return;
+        if (openTemplateWorldId === w.id) openTemplateWorldId = null;
+        catMutate((fw) => {
+          const i = fw.findIndex((x) => x.id === w.id);
+          if (i !== -1) fw.splice(i, 1);
+        });
+      });
+      row.appendChild(delBtn);
+
+      item.appendChild(row);
+      if (isOpen) item.appendChild(buildTemplateEditor(w));
+      list.appendChild(item);
+    });
+    settingsBody.appendChild(list);
+
+    const addRow = makeEl('div', 'cat-add-row');
+    const addInput = makeEl('input', 'form-input');
+    addInput.type = 'text';
+    addInput.id = 'catNewName';
+    addInput.placeholder = '새 카테고리 이름';
+    const addBtn = makeEl('button', 'settings-small-btn is-primary', '+ 카테고리 추가');
+    addBtn.type = 'button';
+    addBtn.addEventListener('click', () => {
+      const name = addInput.value.trim();
+      if (!name) return;
+      const newId = slugify();
+      openTemplateWorldId = newId;
+      catMutate((fw) => {
+        fw.push({
+          id: newId, name, shortName: name, description: '', color: '#9a9a9a',
+          fields: [{ key: 'name', label: '이름', type: 'text', core: true }],
+        });
+      });
+    });
+    addRow.appendChild(addInput);
+    addRow.appendChild(addBtn);
+    settingsBody.appendChild(addRow);
+  }
+
+  // 한 카테고리의 프로필 템플릿(입력 항목 목록) 편집기. 순서 변경, 이름 변경, 삭제, 추가,
+  // 분류/태그 항목의 사이드바·갤러리 역할 설정을 할 수 있다.
+  function buildTemplateEditor(w) {
+    const box = makeEl('div', 'tpl-editor');
+    const fields = w.fields || [];
+
+    function mutateField(key, fn) {
+      return catMutate((fw) => {
+        const t = fw.find((x) => x.id === w.id);
+        const f = t && (t.fields || []).find((ff) => ff.key === key);
+        if (f) fn(f, t);
+      });
+    }
+
+    fields.forEach((f, idx) => {
+      const row = makeEl('div', 'tpl-row');
+      const top = makeEl('div', 'tpl-row-top');
+
+      const moveWrap = makeEl('div', 'field-manager-move');
+      const up = makeEl('button', 'field-manager-move-btn', '▲');
+      up.type = 'button';
+      up.disabled = idx === 0;
+      up.addEventListener('click', () => catMutate((fw) => {
+        const t = fw.find((x) => x.id === w.id);
+        const arr = t && t.fields;
+        if (!arr) return;
+        const i = arr.findIndex((ff) => ff.key === f.key);
+        if (i > 0) [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+      }));
+      const down = makeEl('button', 'field-manager-move-btn', '▼');
+      down.type = 'button';
+      down.disabled = idx === fields.length - 1;
+      down.addEventListener('click', () => catMutate((fw) => {
+        const t = fw.find((x) => x.id === w.id);
+        const arr = t && t.fields;
+        if (!arr) return;
+        const i = arr.findIndex((ff) => ff.key === f.key);
+        if (i !== -1 && i < arr.length - 1) [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]];
+      }));
+      moveWrap.appendChild(up);
+      moveWrap.appendChild(down);
+      top.appendChild(moveWrap);
+
+      const labelInput = makeEl('input', 'form-input tpl-label-input');
+      labelInput.type = 'text';
+      labelInput.value = f.label;
+      labelInput.addEventListener('change', () => {
+        const v = labelInput.value.trim();
+        if (!v || v === f.label) { labelInput.value = f.label; return; }
+        mutateField(f.key, (ff) => { ff.label = v; });
+      });
+      top.appendChild(labelInput);
+
+      const typeLabel = f.core ? '필수 항목' : (FIELD_TYPE_LABELS[f.type] || f.type);
+      top.appendChild(makeEl('span', 'field-type-tag', typeLabel));
+
+      if (!f.core) {
+        const del = makeEl('button', 'settings-small-btn is-danger', '삭제');
+        del.type = 'button';
+        del.addEventListener('click', () => {
+          if (!window.confirm('이 항목을 삭제할까요? (기존 캐릭터의 값은 남아있지만 화면에 더 이상 보이지 않아요)')) return;
+          catMutate((fw) => {
+            const t = fw.find((x) => x.id === w.id);
+            if (t) t.fields = (t.fields || []).filter((ff) => ff.key !== f.key);
+          });
+        });
+        top.appendChild(del);
+      }
+      row.appendChild(top);
+
+      const roles = [];
+      if (f.core) roles.push({ label: '캐릭터마다 다른 항목 추가 허용', checked: !!w.perCharacterFields, apply: (checked) => catMutate((fw) => {
+        const t = fw.find((x) => x.id === w.id);
+        if (t) t.perCharacterFields = checked;
+      }) });
+      if (f.type === 'tags' || f.type === 'category') {
+        roles.push({ label: '사이드바 필터로 쓰기', checked: !!f.sidebarFilter, apply: (c) => mutateField(f.key, (ff) => { ff.sidebarFilter = c; }) });
+        roles.push({ label: '갤러리 구역으로 묶기', checked: !!f.galleryGroup, apply: (c) => mutateField(f.key, (ff) => { ff.galleryGroup = c; }) });
+      }
+      if (f.type === 'category') {
+        roles.push({ label: '여러 개 선택 가능 (예: 1부~5부에 걸쳐 등장)', checked: !!f.multi, apply: (c) => mutateField(f.key, (ff) => { ff.multi = c; }) });
+      }
+      if (roles.length) {
+        const roleRow = makeEl('div', 'field-category-roles');
+        roles.forEach((r) => {
+          const lab = makeEl('label', 'field-category-role-chk');
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.checked = r.checked;
+          chk.addEventListener('change', () => r.apply(chk.checked));
+          lab.appendChild(chk);
+          lab.appendChild(document.createTextNode(' ' + r.label));
+          roleRow.appendChild(lab);
+        });
+        row.appendChild(roleRow);
+      }
+      box.appendChild(row);
+    });
+
+    const addRow = makeEl('div', 'tpl-add-row');
+    const addInput = makeEl('input', 'form-input');
+    addInput.type = 'text';
+    addInput.placeholder = '새 항목 이름 (예: 취미)';
+    const typeSel = makeEl('select', 'form-input');
+    [
+      ['text', '텍스트 입력'], ['tags', '태그 입력'], ['textarea', '긴 글(소개·성격 등)'],
+      ['collapse', '접은 글(눌러야 펼쳐짐)'], ['rating', '레이팅(별점)'],
+      ['entries', '엔트리 목록(이미지+이름+설명)'], ['category', '분류(사이드바·갤러리 구역)'],
+    ].forEach(([v, l]) => {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = l;
+      typeSel.appendChild(o);
+    });
+    const addBtn = makeEl('button', 'settings-small-btn is-primary', '+ 항목 추가');
+    addBtn.type = 'button';
+    addBtn.addEventListener('click', () => {
+      const label = addInput.value.trim();
+      if (!label) return;
+      const key = 'f_' + Date.now();
+      const type = typeSel.value;
+      catMutate((fw) => {
+        const t = fw.find((x) => x.id === w.id);
+        if (t) {
+          t.fields = t.fields || [];
+          t.fields.push({ key, label, type });
+        }
+      });
+    });
+    addRow.appendChild(addInput);
+    addRow.appendChild(typeSel);
+    addRow.appendChild(addBtn);
+    box.appendChild(addRow);
+    return box;
+  }
+
+  if (settingsFabEl) {
+    settingsFabEl.addEventListener('click', () => {
+      settingsView = 'main';
+      openTemplateWorldId = null;
+      renderSettingsBody();
+      settingsOverlay.classList.add('is-open');
+    });
+  }
 
   createTopBtnEl.addEventListener('click', () => {
     const world = activeWorld === 'all' ? worlds[0] : worldById(activeWorld);
@@ -2792,11 +3468,14 @@
   // 캐릭터 생성 버튼도 수정하기/삭제와 마찬가지로, 저장용 개인 토큰을 등록해둔
   // 사람(=실제 운영자)한테만 보이게 한다. 토큰을 넣고 뺄 때마다 다시 확인한다.
   function refreshCreateButtonVisibility() {
-    createTopBtnEl.style.display = getToken() ? '' : 'none';
+    createTopBtnEl.style.display = canEditNow() ? '' : 'none';
   }
   refreshCreateButtonVisibility();
 
+  applyDarkMode();
+  const sitePromise = loadSite();
   [worlds, characters] = await Promise.all([loadWorlds(), loadCharacters()]);
+  await sitePromise;
 
   renderSidebar();
   renderGallery();
