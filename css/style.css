@@ -1707,3 +1707,40 @@ body {
 .settings-status { margin: 2px 0 0; font-size: 12px; color: var(--sub-text); text-align: right; min-height: 1.2em; }
 .settings-status.is-error { color: #c0504d; }
 .settings-row > .settings-small-btn { cursor: pointer; }
+
+/* ---- 로고 한 줄 배치 / 공지 ---- */
+.settings-row.is-top { align-items: center; }
+.settings-row-right { flex-direction: row; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+.settings-row-right .seg-group { width: 112px; flex: none; }
+.settings-row-right .settings-input { width: 130px; flex: none; }
+.settings-row-right .settings-file-line { flex: none; }
+.settings-row-right-inline { display: flex; align-items: center; gap: 10px; }
+
+.rte-toolbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 10px 0 8px; }
+.rte-btn {
+  width: 34px; height: 34px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--surface); color: var(--text);
+  font-family: inherit; font-size: 15px; cursor: pointer;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.rte-btn svg { pointer-events: none; }
+.rte-btn:hover { background: var(--hover-bg); }
+.rte-btn.is-active { background: var(--invert-bg); border-color: var(--invert-bg); color: var(--invert-text); }
+.rte-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+.rte-editor {
+  min-height: 220px; max-height: 50vh; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 12px; background: var(--surface); color: var(--text);
+  font-size: 16px; line-height: 1.7; outline: none;
+  word-break: break-word;
+  -webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
+  -webkit-appearance: none;
+}
+.rte-editor:focus { border-color: var(--invert-bg); }
+.rte-editor h2, .notice-view h2 { font-size: 1.45em; font-weight: 700; margin: 0.2em 0; line-height: 1.4; }
+.rte-editor div, .notice-view div { min-height: 1.7em; }
+.rte-editor b, .notice-view b { font-weight: 700; }
+.notice-view { max-width: 760px; padding: 8px 4px 40px; font-size: 16px; line-height: 1.7; color: var(--text); word-break: break-word; }
