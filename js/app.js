@@ -42,6 +42,8 @@
   let worldsSha = null;
   let characters = [];
   let activeWorld = 'all';
+  // 공지가 켜져 있을 때, 지금 공지 화면(첫 화면)을 보고 있는지
+  let showNotice = false;
   let activeSubFilter = null;
   // 神世界 전용 "순서 편집" 모드: 켜져 있는 동안은 카드를 눌러도 프로필이 안 열리고,
   // 대신 손가락/마우스로 끌어서 순서를 바꿀 수 있다.
@@ -603,11 +605,12 @@
       item.className = 'nav-item';
 
       const btn = document.createElement('button');
-      btn.className = 'nav-btn' + (activeWorld === entry.id ? ' is-active' : '');
+      btn.className = 'nav-btn' + (activeWorld === entry.id && !(showNotice && noticeEnabled()) ? ' is-active' : '');
       btn.textContent = entry.shortName || entry.name;
       btn.addEventListener('click', () => {
         activeWorld = entry.id;
         activeSubFilter = null;
+        showNotice = false;
         renderSidebar();
         renderGallery();
       });
@@ -773,7 +776,14 @@
 
   function renderGallery() {
     updateOrderEditButton();
+    refreshCreateButtonVisibility();
     galleryEl.innerHTML = '';
+
+    if (showNotice && noticeEnabled()) {
+      renderNoticeView();
+      refreshSortableInstances(null);
+      return;
+    }
 
     // 캐릭터 목록 자체를 못 불러온 상태라면, "아직 등록된 캐릭터가 없어요"처럼
     // 실제로 비어있는 것과 헷갈릴 수 있는 문구 대신 진짜 원인을 보여준다.
@@ -1155,6 +1165,7 @@
   logoHomeEl.addEventListener('click', () => {
     activeWorld = 'all';
     activeSubFilter = null;
+    showNotice = noticeEnabled();
     renderSidebar();
     renderGallery();
   });
@@ -2892,9 +2903,8 @@
   function siteSettingsHtml() {
     const logo = siteConfig.logo || {};
     const logoMode = logo.type === 'image' ? 'image' : 'text';
-    const mode = isDarkModeOn() ? 'dark' : 'light';
-    const def = window.OC_DEFAULT_COLORS[mode];
-    const col = Object.assign({}, def, (siteConfig.colors && siteConfig.colors[mode]) || {});
+    const def = window.OC_DEFAULT_COLORS.light;
+    const col = Object.assign({}, def, (siteConfig.colors && siteConfig.colors.light) || {});
     const logoPreview = logo.image
       ? `<img class="settings-preview" src="${escapeAttr(assetUrl(logo.image))}" alt="현재 로고">`
       : '';
@@ -2932,11 +2942,19 @@
       </div>
 
       <div class="settings-row">
-        <span class="settings-row-label">색상<span class="settings-row-sub">${mode === 'dark' ? '다크 모드용' : '라이트 모드용'}</span></span>
+        <span class="settings-row-label">색상</span>
         <div class="color-line">
           <label class="color-chip"><input type="color" data-color="bg" value="${col.bg}"><span>배경</span></label>
           <label class="color-chip"><input type="color" data-color="point" value="${col.point}"><span>포인트</span></label>
           <label class="color-chip"><input type="color" data-color="text" value="${col.text}"><span>글씨</span></label>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <span class="settings-row-label">공지 설정</span>
+        <div class="settings-row-right-inline">
+          <button type="button" class="settings-small-btn" id="openNoticeBox">설정</button>
+          ${toggleSwitchHtml('noticeToggle', noticeEnabled())}
         </div>
       </div>
 
@@ -2948,6 +2966,295 @@
       <p class="settings-status" id="siteSaveStatus"></p>
     `;
   }
+
+  // ---------- 공지 ----------
+  // 공지가 켜져 있으면 공지글이 사이트의 첫 화면(로고를 눌렀을 때도 이 화면)이 되고,
+  // 꺼져 있으면 All(전체 캐릭터) 화면이 첫 화면이 된다.
+  function noticeEnabled() {
+    return !!(siteConfig.notice && siteConfig.notice.enabled);
+  }
+
+  // 공지글 HTML을 허용한 태그/속성만 남기고 정리한다. (저장할 때, 화면에 그릴 때 모두 사용)
+  const NOTICE_TAG_MAP = {
+    b: 'b', strong: 'b', i: 'i', em: 'i', u: 'u', s: 's', strike: 's', del: 's',
+    h1: 'h2', h2: 'h2', h3: 'h2', div: 'div', p: 'div', br: 'br',
+  };
+  const NOTICE_BLOCKS = ['div', 'h2'];
+  function sanitizeNoticeHtml(html) {
+    const doc = new DOMParser().parseFromString('<body>' + String(html || '') + '</body>', 'text/html');
+    function clean(node, out) {
+      node.childNodes.forEach((ch) => {
+        if (ch.nodeType === 3) {
+          out.appendChild(document.createTextNode(ch.nodeValue));
+          return;
+        }
+        if (ch.nodeType !== 1) return;
+        const tag = ch.tagName.toLowerCase();
+        if (tag === 'script' || tag === 'style') return;
+        const mapped = NOTICE_TAG_MAP[tag];
+        if (!mapped) {
+          clean(ch, out); // 모르는 태그는 벗겨내고 안의 글만 남긴다.
+          return;
+        }
+        const el = document.createElement(mapped);
+        if (NOTICE_BLOCKS.indexOf(mapped) !== -1) {
+          let align = (ch.style && ch.style.textAlign) || ch.getAttribute('align') || '';
+          align = align.toLowerCase();
+          if (align === 'left' || align === 'center' || align === 'right') el.style.textAlign = align;
+        }
+        if (mapped !== 'br') clean(ch, el);
+        out.appendChild(el);
+      });
+    }
+    const holder = document.createElement('div');
+    clean(doc.body, holder);
+    return holder.innerHTML;
+  }
+
+  function noticeHasText(html) {
+    const d = document.createElement('div');
+    d.innerHTML = sanitizeNoticeHtml(html);
+    return d.textContent.trim().length > 0;
+  }
+
+  function renderNoticeView() {
+    const wrap = document.createElement('div');
+    wrap.className = 'notice-view';
+    const html = siteConfig.notice && siteConfig.notice.html;
+    if (noticeHasText(html)) {
+      wrap.innerHTML = sanitizeNoticeHtml(html);
+    } else {
+      const empty = document.createElement('p');
+      empty.className = 'empty-msg';
+      empty.textContent = '등록된 공지가 없어요.';
+      wrap.appendChild(empty);
+    }
+    galleryEl.appendChild(wrap);
+  }
+
+  // 공지 설정 박스: 서식 도구 모음 + 글 적는 칸 + 저장 버튼
+  const noticeOverlay = document.createElement('div');
+  noticeOverlay.className = 'modal-overlay';
+  noticeOverlay.innerHTML = `
+    <div class="modal-card">
+      <button class="modal-close" aria-label="닫기">&times;</button>
+      <div class="modal-body">
+        <h2 class="form-title">공지 설정</h2>
+        <div class="rte-toolbar" id="noticeToolbar">
+          <button type="button" class="rte-btn" data-cmd="bold" aria-label="굵게"><b>B</b></button>
+          <button type="button" class="rte-btn" data-cmd="italic" aria-label="기울임"><i>I</i></button>
+          <button type="button" class="rte-btn" data-cmd="underline" aria-label="밑줄"><u>U</u></button>
+          <button type="button" class="rte-btn" data-cmd="strikeThrough" aria-label="취소선"><s>S</s></button>
+          <span class="rte-sep"></span>
+          <button type="button" class="rte-btn" data-cmd="header" aria-label="헤더">H</button>
+          <span class="rte-sep"></span>
+          <button type="button" class="rte-btn" data-cmd="left" aria-label="왼쪽 정렬"><svg viewBox="0 0 16 16" width="16" height="16"><path d="M2 3h12M2 6.5h8M2 10h12M2 13.5h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></button>
+          <button type="button" class="rte-btn" data-cmd="center" aria-label="가운데 정렬"><svg viewBox="0 0 16 16" width="16" height="16"><path d="M2 3h12M4 6.5h8M2 10h12M4 13.5h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></button>
+          <button type="button" class="rte-btn" data-cmd="right" aria-label="오른쪽 정렬"><svg viewBox="0 0 16 16" width="16" height="16"><path d="M2 3h12M6 6.5h8M2 10h12M6 13.5h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></button>
+        </div>
+        <div class="rte-editor" id="noticeEditor" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="false"></div>
+        <p class="settings-status" id="noticeStatus"></p>
+        <button type="button" class="form-submit" id="noticeSave">저장</button>
+      </div>
+    </div>`;
+  document.body.appendChild(noticeOverlay);
+  const noticeEditorEl = noticeOverlay.querySelector('#noticeEditor');
+  const noticeToolbarEl = noticeOverlay.querySelector('#noticeToolbar');
+  const noticeStatusEl = noticeOverlay.querySelector('#noticeStatus');
+  function closeNoticeBox() { noticeOverlay.classList.remove('is-open'); }
+  noticeOverlay.querySelector('.modal-close').addEventListener('click', closeNoticeBox);
+  noticeOverlay.addEventListener('click', (e) => { if (e.target === noticeOverlay) closeNoticeBox(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNoticeBox(); });
+
+  // --- 선택 영역 기억/복원 ---
+  // 아이폰(iOS)에서는 도구 모음 버튼을 누르는 순간 글 적는 칸의 선택이 풀리는 일이 많아서,
+  // 선택이 바뀔 때마다 마지막 선택을 기억해두고, 버튼을 누르면 그 선택을 되살린 뒤에 서식을 적용한다.
+  let noticeSavedRange = null;
+  function selectionInEditor() {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    const r = sel.getRangeAt(0);
+    return noticeEditorEl.contains(r.commonAncestorContainer) ? r : null;
+  }
+  document.addEventListener('selectionchange', () => {
+    const r = selectionInEditor();
+    if (r) {
+      noticeSavedRange = r.cloneRange();
+      updateNoticeToolbarState();
+    }
+  });
+  function restoreNoticeSelection() {
+    noticeEditorEl.focus({ preventScroll: true });
+    const sel = window.getSelection();
+    let r = noticeSavedRange;
+    if (!r || !noticeEditorEl.contains(r.commonAncestorContainer)) {
+      r = document.createRange();
+      r.selectNodeContents(noticeEditorEl);
+      r.collapse(false);
+    }
+    sel.removeAllRanges();
+    sel.addRange(r);
+    return r;
+  }
+
+  // --- 줄(블록) 정리: 맨 위에 바로 적힌 글이 있으면 div로 감싸 준다 ---
+  function ensureNoticeBlocks() {
+    if (!noticeEditorEl.firstChild) {
+      noticeEditorEl.innerHTML = '<div><br></div>';
+      return;
+    }
+    const sel = window.getSelection();
+    const anchor = sel && sel.anchorNode, anchorOff = sel ? sel.anchorOffset : 0;
+    let moved = false;
+    let run = null;
+    Array.from(noticeEditorEl.childNodes).forEach((n) => {
+      const isBlock = n.nodeType === 1 && NOTICE_BLOCKS.indexOf(n.tagName.toLowerCase()) !== -1;
+      if (isBlock) { run = null; return; }
+      if (!run) {
+        run = document.createElement('div');
+        noticeEditorEl.insertBefore(run, n);
+      }
+      run.appendChild(n);
+      moved = true;
+    });
+    if (moved && anchor && noticeEditorEl.contains(anchor)) {
+      const r = document.createRange();
+      r.setStart(anchor, Math.min(anchorOff, anchor.nodeType === 3 ? anchor.length : anchor.childNodes.length));
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+  }
+  noticeEditorEl.addEventListener('input', ensureNoticeBlocks);
+  noticeEditorEl.addEventListener('focus', ensureNoticeBlocks);
+
+  function topBlocksOfRange(r) {
+    const out = [];
+    Array.from(noticeEditorEl.children).forEach((b) => {
+      if (r.intersectsNode(b)) out.push(b);
+    });
+    return out;
+  }
+
+  function applyNoticeAlign(align) {
+    const r = restoreNoticeSelection();
+    ensureNoticeBlocks();
+    const blocks = topBlocksOfRange(window.getSelection().getRangeAt(0) || r);
+    const allSame = blocks.length > 0 && blocks.every((b) => b.style.textAlign === align);
+    blocks.forEach((b) => { b.style.textAlign = allSame && align !== 'left' ? '' : align; });
+  }
+
+  function applyNoticeHeader() {
+    restoreNoticeSelection();
+    ensureNoticeBlocks();
+    const sel = window.getSelection();
+    const r = sel.getRangeAt(0);
+    const blocks = topBlocksOfRange(r);
+    if (!blocks.length) return;
+    const toDiv = blocks.every((b) => b.tagName.toLowerCase() === 'h2');
+    // 선택 영역의 끝점이 바뀐 줄 안에 있으면, 줄이 새 요소로 바뀐 뒤에도 같은 자리를 다시 잡아준다.
+    const pts = [[r.startContainer, r.startOffset], [r.endContainer, r.endOffset]];
+    const map = new Map();
+    blocks.forEach((b) => {
+      const nb = document.createElement(toDiv ? 'div' : 'h2');
+      if (b.style.textAlign) nb.style.textAlign = b.style.textAlign;
+      while (b.firstChild) nb.appendChild(b.firstChild);
+      if (!nb.firstChild) nb.appendChild(document.createElement('br'));
+      b.parentNode.replaceChild(nb, b);
+      map.set(b, nb);
+    });
+    const fix = (c) => (map.has(c) ? map.get(c) : c);
+    try {
+      const nr = document.createRange();
+      nr.setStart(fix(pts[0][0]), pts[0][1]);
+      nr.setEnd(fix(pts[1][0]), pts[1][1]);
+      sel.removeAllRanges();
+      sel.addRange(nr);
+    } catch (e) { /* 선택을 못 되살려도 서식은 이미 적용됨 */ }
+  }
+
+  // 굵게/기울임/밑줄/취소선: 브라우저 기본 명령을 쓰되, 안 먹히면(일부 iOS 환경) 직접 감싸서 적용한다.
+  const INLINE_CMDS = { bold: 'b', italic: 'i', underline: 'u', strikeThrough: 's' };
+  function applyNoticeInline(cmd) {
+    const r = restoreNoticeSelection();
+    ensureNoticeBlocks();
+    let ok = false;
+    const before = noticeEditorEl.innerHTML;
+    try {
+      document.execCommand('styleWithCSS', false, false);
+      ok = document.execCommand(cmd, false, null);
+    } catch (e) { ok = false; }
+    const sel = window.getSelection();
+    const cur = sel.rangeCount ? sel.getRangeAt(0) : r;
+    if ((!ok || noticeEditorEl.innerHTML === before) && !cur.collapsed) {
+      const el = document.createElement(INLINE_CMDS[cmd]);
+      try {
+        el.appendChild(cur.extractContents());
+        cur.insertNode(el);
+        sel.removeAllRanges();
+        const nr = document.createRange();
+        nr.selectNodeContents(el);
+        sel.addRange(nr);
+      } catch (e) { /* 적용 불가한 선택이면 그대로 둔다 */ }
+    }
+  }
+
+  function updateNoticeToolbarState() {
+    if (!noticeOverlay.classList.contains('is-open')) return;
+    const r = selectionInEditor();
+    const set = (cmd, on) => {
+      const b = noticeToolbarEl.querySelector(`[data-cmd="${cmd}"]`);
+      if (b) b.classList.toggle('is-active', !!on);
+    };
+    Object.keys(INLINE_CMDS).forEach((c) => {
+      let on = false;
+      try { on = document.queryCommandState(c); } catch (e) {}
+      set(c, on);
+    });
+    let block = r ? r.startContainer : null;
+    while (block && block.parentNode !== noticeEditorEl) block = block.parentNode;
+    const tag = block && block.nodeType === 1 ? block.tagName.toLowerCase() : '';
+    const al = (block && block.style && block.style.textAlign) || 'left';
+    set('header', tag === 'h2');
+    set('left', al === 'left');
+    set('center', al === 'center');
+    set('right', al === 'right');
+  }
+
+  noticeToolbarEl.querySelectorAll('.rte-btn').forEach((btn) => {
+    // 버튼을 누를 때 글 적는 칸의 선택/키보드가 풀리지 않도록 기본 동작(포커스 이동)을 막는다.
+    ['pointerdown', 'mousedown'].forEach((ev) => btn.addEventListener(ev, (e) => e.preventDefault()));
+    btn.addEventListener('click', () => {
+      const cmd = btn.dataset.cmd;
+      if (INLINE_CMDS[cmd]) applyNoticeInline(cmd);
+      else if (cmd === 'header') applyNoticeHeader();
+      else applyNoticeAlign(cmd);
+      noticeSavedRange = selectionInEditor() ? selectionInEditor().cloneRange() : noticeSavedRange;
+      updateNoticeToolbarState();
+    });
+  });
+
+  function openNoticeBox() {
+    const html = siteConfig.notice && siteConfig.notice.html;
+    noticeEditorEl.innerHTML = sanitizeNoticeHtml(html) || '<div><br></div>';
+    noticeSavedRange = null;
+    noticeStatusEl.textContent = '';
+    noticeStatusEl.classList.remove('is-error');
+    noticeOverlay.classList.add('is-open');
+  }
+
+  noticeOverlay.querySelector('#noticeSave').addEventListener('click', async () => {
+    ensureNoticeBlocks();
+    const html = noticeHasText(noticeEditorEl.innerHTML) ? sanitizeNoticeHtml(noticeEditorEl.innerHTML) : '';
+    noticeStatusEl.classList.remove('is-error');
+    noticeStatusEl.textContent = '저장하는 중...';
+    const r = await saveSiteWithMutation((d) => {
+      d.notice = Object.assign({}, d.notice, { html });
+    });
+    noticeStatusEl.textContent = r.ok ? '저장됐어요.' : '저장에 실패했어요: ' + r.message;
+    noticeStatusEl.classList.toggle('is-error', !r.ok);
+    if (r.ok && showNotice) renderGallery();
+  });
 
   // 토큰 설정은 따로 뜨는 박스 안에서 보여준다.
   const tokenOverlay = document.createElement('div');
@@ -2972,8 +3279,8 @@
         <p>토큰은 사이트 내에서 편집과 저장을 할 수 있는 기능을 제공해요!</p>
         <p><a class="token-link" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">이 곳</a>에서 토큰을 발급해 주세요.</p>
         <ol>
-          <li>Repository access를 사용 중인 저장소로 지정해주세요.</li>
-          <li>Permissions에서 Contents: Read and write를 선택해주세요.</li>
+          <li>Repository access를 사용 중인 저장소로 지정해 주세요.</li>
+          <li>Permissions에서 Contents: Read and write를 선택해 주세요.</li>
           <li>토큰을 생성 후, 아래에 붙여넣고 저장해 주세요.</li>
         </ol>
         <p>(* 토큰이 생성된 페이지를 떠난 후에는 토큰을 다시 확인할 수 없으니, 필요하시다면 꼭..!! 다른 곳에 토큰을 백업해 주세요!)</p>
@@ -3161,13 +3468,12 @@
       });
     }
 
-    // ---- 색상 (지금 켜져 있는 모드의 색만 바꾼다) ----
-    const mode = isDarkModeOn() ? 'dark' : 'light';
+    // ---- 색상 (라이트 모드 색만 정하면, 다크 모드는 거기에 맞춰 자동으로 만들어진다) ----
     document.querySelectorAll('input[data-color]').forEach((inp) => {
       // 고르는 동안은 바로바로 화면에 미리 보여주고,
       inp.addEventListener('input', () => {
         const colors = JSON.parse(JSON.stringify(siteConfig.colors || {}));
-        colors[mode] = Object.assign({}, colors[mode], { [inp.dataset.color]: inp.value });
+        colors.light = Object.assign({}, colors.light, { [inp.dataset.color]: inp.value });
         siteConfig = Object.assign({}, siteConfig, { colors });
         applyDarkMode();
       });
@@ -3177,9 +3483,23 @@
         const val = inp.value;
         autoSaveSite((d) => {
           d.colors = d.colors || {};
-          d.colors[mode] = Object.assign({}, d.colors[mode], { [key]: val });
+          d.colors = { light: Object.assign({}, d.colors.light, { [key]: val }) };
         });
       });
+    });
+
+    document.getElementById('openNoticeBox').addEventListener('click', openNoticeBox);
+    document.getElementById('noticeToggle').addEventListener('click', async () => {
+      const on = !noticeEnabled();
+      const r = await autoSaveSite((d) => { d.notice = Object.assign({}, d.notice, { enabled: on }); });
+      if (!r.ok) return;
+      // 홈(All) 화면을 보고 있었다면 바로 공지 화면으로/에서 전환해서 보여준다.
+      if (activeWorld === 'all' && !activeSubFilter) showNotice = on;
+      else if (!on) showNotice = false;
+      renderSidebar();
+      renderGallery();
+      renderSettingsBody();
+      setSiteStatus('저장됐어요.', false);
     });
 
     document.getElementById('openCategorySettings').addEventListener('click', () => {
@@ -3579,7 +3899,7 @@
   // 캐릭터 생성 버튼도 수정하기/삭제와 마찬가지로, 저장용 개인 토큰을 등록해둔
   // 사람(=실제 운영자)한테만 보이게 한다. 토큰을 넣고 뺄 때마다 다시 확인한다.
   function refreshCreateButtonVisibility() {
-    createTopBtnEl.style.display = canEditNow() ? '' : 'none';
+    createTopBtnEl.style.display = canEditNow() && !(showNotice && noticeEnabled()) ? '' : 'none';
   }
   refreshCreateButtonVisibility();
 
@@ -3587,6 +3907,7 @@
   const sitePromise = loadSite();
   [worlds, characters] = await Promise.all([loadWorlds(), loadCharacters()]);
   await sitePromise;
+  showNotice = noticeEnabled();
 
   renderSidebar();
   renderGallery();
