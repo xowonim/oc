@@ -1734,7 +1734,7 @@ body {
   min-height: 220px; max-height: 50vh; overflow-y: auto;
   border: 1px solid var(--border); border-radius: var(--radius-md);
   padding: 12px; background: var(--surface); color: var(--text);
-  font-size: 16px; line-height: 1.7; outline: none;
+  font-size: 16px; line-height: 1.7; outline: none; /* 아이폰은 16px 미만이면 입력할 때 화면이 확대돼서 16px 유지 */
   word-break: break-word;
   -webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
   -webkit-appearance: none;
@@ -1743,4 +1743,10 @@ body {
 .rte-editor h2, .notice-view h2 { font-size: 1.45em; font-weight: 700; margin: 0.2em 0; line-height: 1.4; }
 .rte-editor div, .notice-view div { min-height: 1.7em; }
 .rte-editor b, .notice-view b { font-weight: 700; }
-.notice-view { max-width: 760px; padding: 8px 4px 40px; font-size: 16px; line-height: 1.7; color: var(--text); word-break: break-word; }
+.notice-view { max-width: 760px; padding: 8px 4px 40px; font-size: 14px; line-height: 1.7; color: var(--text); word-break: break-word; }
+
+.rte-linkbar { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
+.rte-linkbar[hidden] { display: none; }
+.rte-linkbar .settings-input { flex: 1; max-width: none; font-size: 16px; }
+.rte-editor a, .notice-view a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+@media (pointer: coarse) { .settings-input, .form-input { font-size: 16px; } }
