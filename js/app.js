@@ -2951,10 +2951,10 @@
       </div>
 
       <div class="settings-row">
-        <span class="settings-row-label">공지 설정</span>
+        <span class="settings-row-label">메인 문구 설정</span>
         <div class="settings-row-right-inline">
-          <button type="button" class="settings-small-btn" id="openNoticeBox">설정</button>
           ${toggleSwitchHtml('noticeToggle', noticeEnabled())}
+          <button type="button" class="settings-small-btn" id="openNoticeBox">설정</button>
         </div>
       </div>
 
@@ -2980,6 +2980,17 @@
     h1: 'h2', h2: 'h2', h3: 'h2', div: 'div', p: 'div', br: 'br',
   };
   const NOTICE_BLOCKS = ['div', 'h2'];
+  // 링크 주소 정리: http/https/mailto/tel만 허용하고, 주소만 적었으면 https://를 붙여준다.
+  function safeNoticeUrl(raw) {
+    let u = String(raw || '').trim();
+    if (!u) return '';
+    if (/^[a-z][a-z0-9+.-]*:/i.test(u)) {
+      return /^(https?:|mailto:|tel:)/i.test(u) ? u : '';
+    }
+    if (u.startsWith('//')) u = 'https:' + u;
+    else u = 'https://' + u;
+    return u;
+  }
   function sanitizeNoticeHtml(html) {
     const doc = new DOMParser().parseFromString('<body>' + String(html || '') + '</body>', 'text/html');
     function clean(node, out) {
@@ -2991,6 +3002,17 @@
         if (ch.nodeType !== 1) return;
         const tag = ch.tagName.toLowerCase();
         if (tag === 'script' || tag === 'style') return;
+        if (tag === 'a') {
+          const href = safeNoticeUrl(ch.getAttribute('href'));
+          if (!href) { clean(ch, out); return; }
+          const a = document.createElement('a');
+          a.setAttribute('href', href);
+          a.setAttribute('target', '_blank');
+          a.setAttribute('rel', 'noopener noreferrer');
+          clean(ch, a);
+          out.appendChild(a);
+          return;
+        }
         const mapped = NOTICE_TAG_MAP[tag];
         if (!mapped) {
           clean(ch, out); // 모르는 태그는 벗겨내고 안의 글만 남긴다.
@@ -3023,11 +3045,6 @@
     const html = siteConfig.notice && siteConfig.notice.html;
     if (noticeHasText(html)) {
       wrap.innerHTML = sanitizeNoticeHtml(html);
-    } else {
-      const empty = document.createElement('p');
-      empty.className = 'empty-msg';
-      empty.textContent = '등록된 공지가 없어요.';
-      wrap.appendChild(empty);
     }
     galleryEl.appendChild(wrap);
   }
@@ -3039,7 +3056,7 @@
     <div class="modal-card">
       <button class="modal-close" aria-label="닫기">&times;</button>
       <div class="modal-body">
-        <h2 class="form-title">공지 설정</h2>
+        <h2 class="form-title">메인 문구 설정</h2>
         <div class="rte-toolbar" id="noticeToolbar">
           <button type="button" class="rte-btn" data-cmd="bold" aria-label="굵게"><b>B</b></button>
           <button type="button" class="rte-btn" data-cmd="italic" aria-label="기울임"><i>I</i></button>
@@ -3048,9 +3065,16 @@
           <span class="rte-sep"></span>
           <button type="button" class="rte-btn" data-cmd="header" aria-label="헤더">H</button>
           <span class="rte-sep"></span>
+          <button type="button" class="rte-btn" data-cmd="link" aria-label="하이퍼링크"><svg viewBox="0 0 16 16" width="16" height="16"><path d="M6.5 9.5a3 3 0 0 0 4.2 0l2-2a3 3 0 0 0-4.2-4.2l-.8.8M9.5 6.5a3 3 0 0 0-4.2 0l-2 2a3 3 0 0 0 4.2 4.2l.8-.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></button>
+          <span class="rte-sep"></span>
           <button type="button" class="rte-btn" data-cmd="left" aria-label="왼쪽 정렬"><svg viewBox="0 0 16 16" width="16" height="16"><path d="M2 3h12M2 6.5h8M2 10h12M2 13.5h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></button>
           <button type="button" class="rte-btn" data-cmd="center" aria-label="가운데 정렬"><svg viewBox="0 0 16 16" width="16" height="16"><path d="M2 3h12M4 6.5h8M2 10h12M4 13.5h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></button>
           <button type="button" class="rte-btn" data-cmd="right" aria-label="오른쪽 정렬"><svg viewBox="0 0 16 16" width="16" height="16"><path d="M2 3h12M6 6.5h8M2 10h12M6 13.5h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></button>
+        </div>
+        <div class="rte-linkbar" id="noticeLinkBar" hidden>
+          <input type="url" inputmode="url" autocapitalize="off" autocorrect="off" class="settings-input" id="noticeLinkInput" placeholder="https://">
+          <button type="button" class="settings-small-btn is-primary" id="noticeLinkApply">적용</button>
+          <button type="button" class="settings-small-btn" id="noticeLinkRemove">해제</button>
         </div>
         <div class="rte-editor" id="noticeEditor" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="false"></div>
         <p class="settings-status" id="noticeStatus"></p>
@@ -3199,6 +3223,93 @@
     }
   }
 
+  // --- 하이퍼링크 ---
+  const noticeLinkBarEl = noticeOverlay.querySelector('#noticeLinkBar');
+  const noticeLinkInputEl = noticeOverlay.querySelector('#noticeLinkInput');
+  function anchorAt(node) {
+    let n = node;
+    while (n && n !== noticeEditorEl) {
+      if (n.nodeType === 1 && n.tagName.toLowerCase() === 'a') return n;
+      n = n.parentNode;
+    }
+    return null;
+  }
+  function applyNoticeLink(rawUrl) {
+    const href = safeNoticeUrl(rawUrl);
+    if (!href) return false;
+    const r = restoreNoticeSelection();
+    ensureNoticeBlocks();
+    const sel = window.getSelection();
+    const cur = sel.rangeCount ? sel.getRangeAt(0) : r;
+    const existing = anchorAt(cur.startContainer);
+    if (existing) { existing.setAttribute('href', href); return true; }
+    if (cur.collapsed) {
+      const a = document.createElement('a');
+      a.setAttribute('href', href);
+      a.textContent = rawUrl.trim();
+      cur.insertNode(a);
+      return true;
+    }
+    let ok = false;
+    try { ok = document.execCommand('createLink', false, href); } catch (e) { ok = false; }
+    const made = Array.from(noticeEditorEl.querySelectorAll('a')).some((a) => a.getAttribute('href') === href);
+    if (!ok || !made) {
+      const sc = cur.startContainer, ec = cur.endContainer;
+      let b1 = sc, b2 = ec;
+      while (b1 && b1.parentNode !== noticeEditorEl) b1 = b1.parentNode;
+      while (b2 && b2.parentNode !== noticeEditorEl) b2 = b2.parentNode;
+      if (b1 && b1 === b2) { // 한 줄 안의 선택일 때만 직접 감싼다
+        const a = document.createElement('a');
+        a.setAttribute('href', href);
+        a.appendChild(cur.extractContents());
+        cur.insertNode(a);
+      } else {
+        return false;
+      }
+    }
+    return true;
+  }
+  function removeNoticeLink() {
+    const r = restoreNoticeSelection();
+    const sel = window.getSelection();
+    const cur = sel.rangeCount ? sel.getRangeAt(0) : r;
+    const anchors = new Set();
+    const first = anchorAt(cur.startContainer);
+    if (first) anchors.add(first);
+    noticeEditorEl.querySelectorAll('a').forEach((a) => { if (cur.intersectsNode(a)) anchors.add(a); });
+    anchors.forEach((a) => {
+      while (a.firstChild) a.parentNode.insertBefore(a.firstChild, a);
+      a.parentNode.removeChild(a);
+    });
+  }
+  function toggleNoticeLinkBar() {
+    const open = noticeLinkBarEl.hidden;
+    noticeLinkBarEl.hidden = !open;
+    if (open) {
+      const r = noticeSavedRange;
+      const a = r ? anchorAt(r.startContainer) : null;
+      noticeLinkInputEl.value = a ? a.getAttribute('href') : '';
+      noticeLinkInputEl.focus();
+    }
+  }
+  noticeOverlay.querySelector('#noticeLinkApply').addEventListener('click', () => {
+    if (applyNoticeLink(noticeLinkInputEl.value)) {
+      noticeLinkBarEl.hidden = true;
+      noticeSavedRange = selectionInEditor() ? selectionInEditor().cloneRange() : noticeSavedRange;
+      updateNoticeToolbarState();
+    }
+  });
+  noticeOverlay.querySelector('#noticeLinkRemove').addEventListener('click', () => {
+    removeNoticeLink();
+    noticeLinkBarEl.hidden = true;
+    updateNoticeToolbarState();
+  });
+  noticeLinkInputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); noticeOverlay.querySelector('#noticeLinkApply').click(); }
+  });
+  // 적어 넣은 칸 안의 링크를 눌러도 다른 페이지로 넘어가지 않게 한다.
+  noticeEditorEl.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('a')) e.preventDefault(); });
+
   function updateNoticeToolbarState() {
     if (!noticeOverlay.classList.contains('is-open')) return;
     const r = selectionInEditor();
@@ -3216,6 +3327,7 @@
     const tag = block && block.nodeType === 1 ? block.tagName.toLowerCase() : '';
     const al = (block && block.style && block.style.textAlign) || 'left';
     set('header', tag === 'h2');
+    set('link', r && anchorAt(r.startContainer));
     set('left', al === 'left');
     set('center', al === 'center');
     set('right', al === 'right');
@@ -3226,6 +3338,7 @@
     ['pointerdown', 'mousedown'].forEach((ev) => btn.addEventListener(ev, (e) => e.preventDefault()));
     btn.addEventListener('click', () => {
       const cmd = btn.dataset.cmd;
+      if (cmd === 'link') { toggleNoticeLinkBar(); return; }
       if (INLINE_CMDS[cmd]) applyNoticeInline(cmd);
       else if (cmd === 'header') applyNoticeHeader();
       else applyNoticeAlign(cmd);
@@ -3238,6 +3351,7 @@
     const html = siteConfig.notice && siteConfig.notice.html;
     noticeEditorEl.innerHTML = sanitizeNoticeHtml(html) || '<div><br></div>';
     noticeSavedRange = null;
+    noticeLinkBarEl.hidden = true;
     noticeStatusEl.textContent = '';
     noticeStatusEl.classList.remove('is-error');
     noticeOverlay.classList.add('is-open');
