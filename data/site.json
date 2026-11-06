@@ -6,6 +6,7 @@
     "image": "assets/site/logo-1793944614436.png"
   },
   "notice": {
-    "enabled": true
+    "enabled": true,
+    "html": "<div style=\"text-align: center;\">안녕하세요.. 반갑습니다 환영합니다</div>"
   }
 }
