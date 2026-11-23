@@ -60,7 +60,8 @@
         "key": "f_1790492015318",
         "label": "주 오행",
         "type": "tags",
-        "galleryGroup": false
+        "galleryGroup": false,
+        "galleryAux": true
       },
       {
         "key": "f_1790458370300",
@@ -296,7 +297,8 @@
       {
         "key": "f_1790484073611",
         "label": "소속",
-        "type": "tags"
+        "type": "tags",
+        "galleryAux": true
       },
       {
         "key": "f_1790477497994",
@@ -472,7 +474,8 @@
       {
         "key": "f_1790459237442",
         "label": "소속",
-        "type": "tags"
+        "type": "tags",
+        "galleryAux": true
       },
       {
         "key": "f_1790459018143",
@@ -577,7 +580,8 @@
       {
         "key": "f_1790516117141",
         "label": "소속",
-        "type": "tags"
+        "type": "tags",
+        "galleryAux": true
       },
       {
         "key": "age",
