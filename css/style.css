@@ -1771,3 +1771,158 @@ input[type="file"].form-input::file-selector-button { font-family: inherit; font
 /* x 버튼은 테두리/배경 없이 기호만 */
 .field-manager-del { border: none; background: transparent; }
 .field-manager-del:hover { border: none; }
+
+/* ---------- 캐릭터 상세: 수정 / 삭제 버튼 ---------- */
+.modal-action-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+.modal-action-row .modal-edit-btn,
+.modal-action-row .modal-delete-btn {
+  width: auto;
+  margin: 0;
+  padding: 10px 22px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.modal-action-row .modal-edit-btn { color: var(--text); }
+.modal-action-row .modal-delete-btn { color: #b94a48; }
+.modal-action-row .modal-edit-btn:hover { border-color: var(--sub-text); }
+.modal-action-row .modal-delete-btn:hover { border-color: #b94a48; color: #b94a48; }
+
+/* 캐릭터 작성 창의 항목 이름(수정 불가, 표시만) */
+.field-manager-label-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 2px 0;
+}
+
+/* ---------- 사이드바: 글씨만 있는 심플한 메뉴 ---------- */
+.sidebar { border-right: none; }
+.nav-list { gap: 4px; }
+.logo-home { padding-bottom: 22px; }
+.nav-btn {
+  border: none;
+  border-radius: 0;
+  background: none;
+  padding: 7px 4px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+  opacity: 0.82;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.nav-btn:hover { border: none; opacity: 1; transform: translateX(3px); }
+.nav-btn.is-active {
+  background: none;
+  border: none;
+  color: var(--text);
+  opacity: 1;
+  text-decoration: underline;
+  text-underline-offset: 5px;
+}
+.sub-list { margin-top: 2px; padding-left: 12px; gap: 0; }
+.sub-item-btn {
+  padding: 5px 4px;
+  border-radius: 0;
+  background: none;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.sub-item-btn:hover { background: none; color: var(--text); transform: translateX(3px); }
+.sub-item-btn.is-active { color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
+
+/* 메뉴 버튼(좁은 화면에서만 보임) */
+.menu-btn { display: none; }
+
+@media (max-width: 640px) {
+  .menu-btn {
+    display: flex;
+    position: fixed;
+    top: 6px;
+    left: 8px;
+    z-index: 60;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: none;
+    background: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+  }
+  .menu-btn span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: var(--text);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  .menu-btn.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .menu-btn.open span:nth-child(2) { opacity: 0; }
+  .menu-btn.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  .sidebar {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 55;
+    padding: 80px 32px 40px;
+    border-bottom: none;
+    overflow-y: auto;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .sidebar.open { opacity: 1; pointer-events: auto; }
+  .logo-home { font-size: 20px; padding-bottom: 20px; }
+  .nav-list {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    overflow: visible;
+    gap: 2px;
+    padding-bottom: 0;
+  }
+  .nav-btn { width: 100%; padding: 9px 4px; font-size: 17px; }
+  #subListWrap { margin-top: 14px; }
+  .sub-list {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    overflow: visible;
+    padding-left: 12px;
+    margin-top: 0;
+    gap: 0;
+  }
+  .sub-item-btn { width: 100%; border: none; border-radius: 0; padding: 7px 4px; font-size: 15px; }
+  .sub-item-btn.is-active { background: none; color: var(--text); border: none; }
+  .content { padding-top: 64px; }
+}
+
+/* 캐릭터 작성 창의 챕터(캐릭터 전용 프로필, 시리즈 소속 정리)는 점선 네모로 묶는다 */
+.form-chapter {
+  border: 1px dashed var(--placeholder);
+  border-radius: var(--radius-md);
+  padding: 4px 14px 14px;
+  margin-top: 18px;
+}
+.form-chapter > .form-section-title:first-child,
+.form-chapter > .form-section-title:first-of-type { margin-top: 12px; }
+.part-override-section.form-chapter { margin-top: 18px; }
+.part-override-section.form-chapter[hidden] { display: none; }
