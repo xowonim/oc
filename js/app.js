@@ -1310,7 +1310,9 @@
         const delBtn = document.createElement('button');
         delBtn.type = 'button';
         delBtn.className = 'field-manager-del';
-        delBtn.textContent = '삭제';
+        delBtn.textContent = '×';
+        delBtn.title = '삭제';
+        delBtn.setAttribute('aria-label', '삭제');
         delBtn.addEventListener('click', () => {
           rows.splice(idx, 1);
           redraw();
@@ -1451,7 +1453,9 @@
         const delBtn = document.createElement('button');
         delBtn.type = 'button';
         delBtn.className = 'entry-del-btn';
-        delBtn.textContent = '삭제';
+        delBtn.textContent = '×';
+        delBtn.title = '삭제';
+        delBtn.setAttribute('aria-label', '삭제');
         delBtn.addEventListener('click', () => {
           entries.splice(idx, 1);
           delete pendingFiles[entry.id];
@@ -1839,18 +1843,15 @@
         label.appendChild(roleRow);
 
         if (firstTagField && f.key === firstTagField.key) {
-          const seriesRow = document.createElement('div');
-          seriesRow.className = 'series-toggle-row';
-          seriesRow.innerHTML = `<span class="series-toggle-label">시리즈물 캐릭터</span>${toggleSwitchHtml('', currentSeriesOn)}`;
-          const sw = seriesRow.querySelector('.toggle-switch');
-          sw.removeAttribute('id');
-          sw.addEventListener('click', () => {
-            currentSeriesOn = !currentSeriesOn;
-            sw.classList.toggle('is-on', currentSeriesOn);
-            sw.setAttribute('aria-checked', String(currentSeriesOn));
+          // 위의 다른 옵션들과 같은 체크박스 모양으로, 같은 줄 묶음 맨 아래에 둔다.
+          const seriesChk = document.createElement('label');
+          seriesChk.className = 'field-category-role-chk';
+          seriesChk.innerHTML = `<input type="checkbox" ${currentSeriesOn ? 'checked' : ''}> 시리즈물 캐릭터`;
+          seriesChk.querySelector('input').addEventListener('change', (e) => {
+            currentSeriesOn = e.target.checked;
             if (seriesSectionEl) seriesSectionEl.hidden = !currentSeriesOn;
           });
-          label.appendChild(seriesRow);
+          roleRow.appendChild(seriesChk);
         }
       } else if (f.type === 'textarea' || f.type === 'collapse') {
         mountRichText(label, f.key, rawVal);
@@ -1960,7 +1961,9 @@
         const delBtn = document.createElement('button');
         delBtn.type = 'button';
         delBtn.className = 'field-manager-del';
-        delBtn.textContent = '항목 삭제';
+        delBtn.textContent = '×';
+        delBtn.title = '삭제';
+        delBtn.setAttribute('aria-label', '삭제');
         delBtn.addEventListener('click', () => removeFieldFromWorld(w, f.key));
         row.appendChild(delBtn);
       }
@@ -2087,7 +2090,9 @@
       const delBtn = document.createElement('button');
       delBtn.type = 'button';
       delBtn.className = 'field-manager-del';
-      delBtn.textContent = '항목 삭제';
+      delBtn.textContent = '×';
+        delBtn.title = '삭제';
+        delBtn.setAttribute('aria-label', '삭제');
       delBtn.addEventListener('click', () => {
         const snap = snapshotFieldValues(currentCustomFields);
         currentCustomFields = currentCustomFields.filter((x) => x.key !== f.key);
