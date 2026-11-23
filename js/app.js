@@ -110,6 +110,9 @@
     } else {
       logoHomeEl.textContent = logo.text || DEFAULT_SITE_TITLE;
     }
+    // 좁은 화면 위쪽 막대에 같은 로고를 보여준다.
+    const mobileLogoEl = document.getElementById('mobileLogo');
+    if (mobileLogoEl) mobileLogoEl.innerHTML = logoHomeEl.innerHTML;
     let link = document.getElementById('siteFavicon');
     if (siteConfig.favicon) {
       if (!link) {
@@ -680,9 +683,8 @@
         // 모바일(가로로 넘기는 탭 줄)에서만 하위 카테고리를 탭 줄 바깥의 별도 영역에 둔다.
         // 그래야 하위 카테고리 개수에 따라 탭 줄 자체의 높이가 늘어나지 않는다.
         // 그 외(세로로 나열되는 넓은 화면)에서는 원래대로 선택된 탭 바로 아래에 붙인다.
-        const isMobileNav = window.matchMedia('(max-width: 640px)').matches;
-        if (isMobileNav && subListWrapEl) subListWrapEl.appendChild(subList);
-        else item.appendChild(subList);
+        // (좁은 화면도 이제 세로 메뉴라서, 선택된 탭 바로 아래에 붙인다)
+        item.appendChild(subList);
       }
 
       navListEl.appendChild(item);
@@ -1187,6 +1189,11 @@
       closeSettingsModal();
     }
   });
+
+  (function wireMobileLogo() {
+    const el = document.getElementById('mobileLogo');
+    if (el) el.addEventListener('click', () => logoHomeEl.click());
+  })();
 
   logoHomeEl.addEventListener('click', () => {
     activeWorld = 'all';
