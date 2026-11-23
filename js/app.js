@@ -455,10 +455,14 @@
   }
 
   // "시리즈물 캐릭터": 켜져 있으면 시리즈(사이드바 세부 카테고리)별로 소속 태그를 따로 정할 수 있다.
-  // 따로 정한 적이 없는 캐릭터는, 神世界는 켜진 상태로, 나머지 템플릿은 꺼진 상태로 본다.
-  function seriesCharacterOn(c, world) {
-    const v = c && c.fields ? c.fields.seriesCharacter : undefined;
-    return typeof v === 'boolean' ? v : isSinsekaiWorld(world);
+  // 스위치를 정해 저장한 적이 없는 캐릭터는, 이미 시리즈별 소속을 적어둔 게 있으면 켜진 것으로 보고
+  // (그래야 기존에 적어둔 내용이 그대로 살아있다), 없으면 꺼진 것으로 본다. 새 캐릭터는 꺼진 채로 시작한다.
+  function seriesCharacterOn(c) {
+    const f = c && c.fields;
+    if (!f) return false;
+    if (typeof f.seriesCharacter === 'boolean') return f.seriesCharacter;
+    const ov = f.partOverrides;
+    return !!(ov && typeof ov === 'object' && Object.keys(ov).length > 0);
   }
 
   function isSinsekaiWorld(world) {
@@ -854,7 +858,7 @@
     if (world && world.id === OC_WORLD_ID && c.world === YMKB_WORLD_ID) {
       return activeSubFilter === YMKB_SCHOOL_CITY ? [YMKB_SCHOOL_NAME_FOR_OC] : [];
     }
-    if (world && seriesCharacterOn(c, world) && activeSubFilter) {
+    if (world && seriesCharacterOn(c) && activeSubFilter) {
       const overrides = c.fields && c.fields.partOverrides;
       const overridden = overrides && overrides[activeSubFilter];
       if (Array.isArray(overridden) && overridden.length) return overridden;
@@ -1704,7 +1708,7 @@
     currentFieldWidgets = {};
     partOverrideWidget = null;
     const firstTagField = (w.fields || []).find((ff) => ff.type === 'tags') || null;
-    currentSeriesOn = seriesCharacterOn(existing, w);
+    currentSeriesOn = seriesCharacterOn(existing);
     let seriesSectionEl = null;
 
     if (w.useGradeClass) {
