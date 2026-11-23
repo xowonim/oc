@@ -1740,7 +1740,7 @@ body {
 .rte-editor h2, .notice-view h2 { font-size: 1.45em; font-weight: 700; margin: 0.2em 0; line-height: 1.4; }
 .rte-editor div, .notice-view div { min-height: 1.7em; }
 .rte-editor b, .notice-view b { font-weight: 700; }
-.notice-view { max-width: 760px; padding: 8px 4px 40px; font-size: 14px; line-height: 1.7; color: var(--text); word-break: break-word; }
+.notice-view { width: 100%; max-width: 760px; margin: 0 auto; padding: 8px 4px 40px; font-size: 14px; line-height: 1.7; color: var(--text); word-break: break-word; }
 
 .rte-linkbar { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
 .rte-linkbar[hidden] { display: none; }
@@ -1839,7 +1839,8 @@ input[type="file"].form-input::file-selector-button { font-family: inherit; font
   text-decoration: none;
 }
 .nav-item { align-items: flex-start; }
-.sub-list { margin: 1.2rem 0 0; padding: 0 0 0 2px; gap: 1.1rem; }
+/* 세부 카테고리가 열릴 때만, 큰 카테고리와 세부 카테고리 사이에 글자색(=테마색) 구분선 */
+.sub-list { align-self: stretch; margin: 1rem 0 0; padding: 1.1rem 0 0 2px; gap: 1.1rem; border-top: 1px solid var(--text); }
 .sub-item-btn {
   width: auto;
   padding: 0;
@@ -1924,10 +1925,16 @@ input[type="file"].form-input::file-selector-button { font-family: inherit; font
   .nav-item { align-items: center; }
   .nav-btn { align-self: center; font-size: 1.05rem; letter-spacing: 0.14em; }
   #subListWrap { margin-top: 0; }
-  .sub-list { flex-direction: column; flex-wrap: nowrap; overflow: visible; align-items: center; padding: 0; margin: 0; gap: 1.1rem; }
+  .sub-list { flex-direction: column; flex-wrap: nowrap; overflow: visible; align-items: center; align-self: center; width: 4rem; padding: 1.1rem 0 0; margin: 0.9rem 0 0; gap: 1.1rem; }
   .sub-item-btn { width: auto; border: none; border-radius: 0; padding: 0; font-size: 0.95rem; }
   .sub-item-btn.is-active { background: none; color: var(--text); border: none; }
   .content { padding-top: 76px; }
+}
+@media (max-width: 640px) {
+  /* 세로로 쌓이는 화면에서는 본문이 가로 전체를 차지해야 가운데 정렬이 맞는다 */
+  .layout { align-items: stretch; }
+  .content { width: 100%; }
+  .menu-btn { top: 10px; }
 }
 
 /* 캐릭터 작성 창의 챕터(캐릭터 전용 프로필, 시리즈 소속 정리)는 점선 네모로 묶는다 */
@@ -1941,3 +1948,30 @@ input[type="file"].form-input::file-selector-button { font-family: inherit; font
 .form-chapter > .form-section-title:first-of-type { margin-top: 12px; }
 .part-override-section.form-chapter { margin-top: 18px; }
 .part-override-section.form-chapter[hidden] { display: none; }
+
+/* 좁은 화면 위쪽 막대: 햄버거 버튼 옆(가운데)에 로고 */
+.mobile-topbar { display: none; }
+@media (max-width: 640px) {
+  .mobile-topbar {
+    display: flex;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 64px;
+    z-index: 50;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+  }
+  .mobile-logo {
+    border: none;
+    background: none;
+    padding: 0;
+    font-family: inherit;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .mobile-logo .logo-img { width: 150px; max-width: 150px; }
+}
