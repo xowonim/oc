@@ -1750,3 +1750,10 @@ body {
 .rte-linkbar .settings-input { flex: 1; max-width: none; font-size: 16px; }
 .rte-editor a, .notice-view a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 @media (pointer: coarse) { .settings-input, .form-input { font-size: 16px; } }
+
+/* ---- 캐릭터 수정 창 정리 ---- */
+.image-slot-preview { display: block; margin-top: 8px; max-width: 100%; max-height: 140px; object-fit: contain; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--card-bg); }
+.richtext-wrap.is-compact .richtext-editable { min-height: 60px; }
+.series-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); }
+.series-toggle-label { font-size: 13px; color: var(--text); }
+.part-override-section[hidden] { display: none; }
