@@ -606,6 +606,22 @@
   }
 
   // ---------- 사이드바 ----------
+  // 좁은 화면에서는 햄버거 버튼으로 여닫는 전체 화면 메뉴가 된다.
+  (function wireMobileMenu() {
+    const sb = document.getElementById('sidebar');
+    const mb = document.getElementById('menuBtn');
+    if (!sb || !mb) return;
+    const setOpen = (on) => { sb.classList.toggle('open', on); mb.classList.toggle('open', on); };
+    mb.addEventListener('click', () => setOpen(!sb.classList.contains('open')));
+    sb.addEventListener('click', (e) => {
+      if (e.target === sb || e.target.closest('.logo-home') || e.target.closest('.sub-item-btn')) { setOpen(false); return; }
+      // 세부 카테고리가 없는 메뉴를 눌렀을 때는 바로 닫는다 (있으면 열어둬서 고르게 한다)
+      if (e.target.closest('.nav-btn') && !sb.querySelector('.sub-list')) setOpen(false);
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
+    window.addEventListener('resize', () => { if (window.innerWidth > 640) setOpen(false); });
+  })();
+
   function renderSidebar() {
     navListEl.innerHTML = '';
     if (subListWrapEl) subListWrapEl.innerHTML = '';
@@ -1105,8 +1121,7 @@
       <p class="modal-name">${c.name}</p>
       <span class="modal-world-tag" style="background:${worldColor}">${world ? world.name : ''}</span>
       ${sectionsHtml}
-      ${canEdit ? '<button class="modal-edit-btn" id="modalEditBtn">수정하기</button>' : ''}
-      ${canEdit ? `<div class="modal-delete-row"><button class="modal-delete-btn" id="modalDeleteBtn">캐릭터 삭제</button></div>` : ''}
+      ${canEdit ? `<div class="modal-action-row"><button class="modal-edit-btn" id="modalEditBtn">수정</button><button class="modal-delete-btn" id="modalDeleteBtn">삭제</button></div>` : ''}
     `;
 
     modalBody.querySelectorAll('.modal-collapse-toggle').forEach((btn) => {
@@ -1748,23 +1763,6 @@
       // 드래그 순서 추적용은 별도 이름(data-row-field-key)을 쓴다.
       row.dataset.rowFieldKey = f.key;
 
-      const moveWrap = document.createElement('div');
-      moveWrap.className = 'field-manager-move';
-      const upBtn = document.createElement('button');
-      upBtn.type = 'button';
-      upBtn.className = 'field-manager-move-btn';
-      upBtn.textContent = '▲';
-      upBtn.disabled = idx === 0;
-      upBtn.addEventListener('click', () => moveFieldInWorld(w, f.key, -1));
-      const downBtn = document.createElement('button');
-      downBtn.type = 'button';
-      downBtn.className = 'field-manager-move-btn';
-      downBtn.textContent = '▼';
-      downBtn.disabled = idx === arr.length - 1;
-      downBtn.addEventListener('click', () => moveFieldInWorld(w, f.key, 1));
-      moveWrap.appendChild(upBtn);
-      moveWrap.appendChild(downBtn);
-      row.appendChild(moveWrap);
 
       // 참고: 이 한 줄(row) 안에는 "항목 이름 바꾸기" 입력창과 "실제 값" 입력창이 같이 들어있는데,
       // 이걸 <label> 태그로 감싸면 값 칸(특히 서식 있는 글 편집창)을 눌러도 브라우저가 클릭을
@@ -1780,16 +1778,10 @@
 
       const labelEditRow = document.createElement('div');
       labelEditRow.className = 'field-manager-label-edit-row';
-      const labelInput = document.createElement('input');
-      labelInput.type = 'text';
-      labelInput.className = 'field-manager-label-edit';
-      labelInput.value = f.label;
-      labelInput.addEventListener('change', () => {
-        const v = labelInput.value.trim();
-        if (v) renameFieldInWorld(w, f.key, v);
-        else labelInput.value = f.label;
-      });
-      labelEditRow.appendChild(labelInput);
+      const labelText = document.createElement('span');
+      labelText.className = 'field-manager-label-text';
+      labelText.textContent = f.label;
+      labelEditRow.appendChild(labelText);
       if (f.type === 'tags') {
         const tagBadge = document.createElement('span');
         tagBadge.className = 'field-type-tag';
@@ -1962,15 +1954,6 @@
         badge.className = 'field-manager-core-badge';
         badge.textContent = '필수 항목';
         row.appendChild(badge);
-      } else {
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'field-manager-del';
-        delBtn.textContent = '×';
-        delBtn.title = '삭제';
-        delBtn.setAttribute('aria-label', '삭제');
-        delBtn.addEventListener('click', () => removeFieldFromWorld(w, f.key));
-        row.appendChild(delBtn);
       }
 
       rowsWrap.appendChild(row);
@@ -1978,48 +1961,26 @@
 
     fieldMgr.appendChild(rowsWrap);
 
-    const addRow = document.createElement('div');
-    addRow.className = 'field-manager-add';
-    addRow.innerHTML = `
-      <input type="text" class="form-input" id="newFieldLabel" placeholder="새 항목 이름 (예: 취미)">
-      <select class="form-input" id="newFieldType">
-        <option value="text">텍스트 입력</option>
-        <option value="tags">태그 입력</option>
-        <option value="textarea">긴 글(소개·성격 등)</option>
-        <option value="collapse">접은 글(눌러야 펼쳐짐)</option>
-        <option value="rating">레이팅(별점)</option>
-        <option value="entries">엔트리 목록(이미지+이름+설명)</option>
-        <option value="category">분류(사이드바·갤러리 세부 구분)</option>
-      </select>
-      <button type="button" class="field-manager-add-btn" id="newFieldBtn">+ 항목 추가</button>
-    `;
-    fieldMgr.appendChild(addRow);
 
     container.appendChild(fieldMgr);
-    wireFieldManagerDrag(rowsWrap, w);
 
     // 시리즈물 캐릭터: 시리즈(사이드바 세부 카테고리)에 따라 소속(태그)이 바뀌는 캐릭터를 위한
     // "시리즈 소속 정리" 입력칸. 위의 "시리즈물 캐릭터" 스위치를 켰을 때만 보인다.
     if (firstTagField) {
       const partOverrideSection = document.createElement('div');
-      partOverrideSection.className = 'part-override-section';
+      partOverrideSection.className = 'part-override-section form-chapter';
       partOverrideSection.hidden = !currentSeriesOn;
       partOverrideSection.innerHTML = `
         <p class="form-section-title">시리즈 소속 정리</p>
-        <p class="form-hint">시리즈 → 사이드바 세부 카테고리를 입력하면 됩니다<br>미기입 시, 기본 태그 반영. 기입 시, 해당 세부 카테고리에서는 이 캐릭터의 태그(소속 등)가 기입한 대로 변경돼요</p>
+        <p class="form-hint">시리즈 → 사이드바 세부 카테고리를 입력하면 됩니다<br>미기입 시, 기본 태그 반영.<br>기입 시, 해당 세부 카테고리에서는 이 캐릭터의 태그(소속 등)가 기입한 대로 변경돼요</p>
       `;
-      container.appendChild(partOverrideSection);
+      const seriesHost = document.getElementById('seriesContainer');
+      if (seriesHost) { seriesHost.innerHTML = ''; seriesHost.appendChild(partOverrideSection); }
       seriesSectionEl = partOverrideSection;
       const initialOverrides = existing && existing.fields ? existing.fields.partOverrides : null;
       partOverrideWidget = mountPartOverrideInput(partOverrideSection, initialOverrides);
     }
 
-    document.getElementById('newFieldBtn').addEventListener('click', () => {
-      const labelVal = document.getElementById('newFieldLabel').value.trim();
-      const typeVal = document.getElementById('newFieldType').value;
-      if (!labelVal) return;
-      addFieldToWorld(w, labelVal, typeVal);
-    });
   }
 
   // ETC처럼 세계관 하나에 출처가 다 제각각인 캐릭터들이 섞여 있을 때를 위한 섹션.
@@ -2030,15 +1991,17 @@
     const container = document.getElementById('customFieldsContainer');
     if (!container) return;
     container.innerHTML = '';
+    container.classList.remove('form-chapter');
     if (!w || !w.perCharacterFields) return;
+    container.classList.add('form-chapter');
 
     const header = document.createElement('h3');
     header.className = 'form-section-title';
-    header.textContent = '이 캐릭터만의 항목';
+    header.textContent = '캐릭터 전용 프로필';
     container.appendChild(header);
     const hint = document.createElement('p');
     hint.className = 'form-hint';
-    hint.textContent = '템플릿 공통 항목 말고, 이 캐릭터한테만 필요한 항목을 자유롭게 추가할 수 있어요.';
+    hint.textContent = '템플릿 외의 프로필 항목을 추가할 수 있어요';
     container.appendChild(hint);
 
     const fieldMgr = document.createElement('div');
@@ -2499,13 +2462,10 @@
 
       <div id="dynamicFieldsContainer"></div>
       <div id="customFieldsContainer"></div>
+      <div id="seriesContainer"></div>
 
       <p class="form-error" id="formError"></p>
       <button class="form-submit" id="formSubmit">${isEdit ? '저장하기' : '만들기'}</button>
-      <p class="form-hint">
-        토큰이 없거나 저장이 안 되면
-        <a href="#" id="formFallbackLink">깃허브에서 직접 만들기</a>로 대신하세요.
-      </p>
     `;
 
     renderDynamicSection(w, renderData, presetSubcategory);
@@ -2560,11 +2520,6 @@
     document.getElementById('fWorld').addEventListener('change', (e) => {
       selectedWorldId = e.target.value;
       switchToWorld(worldById(selectedWorldId));
-    });
-
-    document.getElementById('formFallbackLink').addEventListener('click', (e) => {
-      e.preventDefault();
-      window.open(buildGithubNewFileUrl(worldById(selectedWorldId), presetSubcategory, isEdit ? existing : null), '_blank');
     });
 
     document.getElementById('formSubmit').addEventListener('click', () => {
