@@ -6,7 +6,7 @@
     "image": "assets/site/logo-1793944614436.png"
   },
   "notice": {
-    "enabled": false,
+    "enabled": true,
     "html": ""
   }
 }
