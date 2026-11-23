@@ -454,6 +454,13 @@
     return world.fields.find((f) => f.label === label) || null;
   }
 
+  // "시리즈물 캐릭터": 켜져 있으면 시리즈(사이드바 세부 카테고리)별로 소속 태그를 따로 정할 수 있다.
+  // 따로 정한 적이 없는 캐릭터는, 神世界는 켜진 상태로, 나머지 템플릿은 꺼진 상태로 본다.
+  function seriesCharacterOn(c, world) {
+    const v = c && c.fields ? c.fields.seriesCharacter : undefined;
+    return typeof v === 'boolean' ? v : isSinsekaiWorld(world);
+  }
+
   function isSinsekaiWorld(world) {
     return !!world && (world.id === 'sinsekai' || world.name === '神世界');
   }
@@ -847,7 +854,7 @@
     if (world && world.id === OC_WORLD_ID && c.world === YMKB_WORLD_ID) {
       return activeSubFilter === YMKB_SCHOOL_CITY ? [YMKB_SCHOOL_NAME_FOR_OC] : [];
     }
-    if (world && isSinsekaiWorld(world) && activeSubFilter) {
+    if (world && seriesCharacterOn(c, world) && activeSubFilter) {
       const overrides = c.fields && c.fields.partOverrides;
       const overridden = overrides && overrides[activeSubFilter];
       if (Array.isArray(overridden) && overridden.length) return overridden;
@@ -1264,7 +1271,7 @@
     return { getValues: () => tags };
   }
 
-  // 神世界 캐릭터의 "부별 소속 재정의" 입력 위젯. 행마다 [부 이름(자유 입력)] + [그 부에서의
+  // "시리즈 소속 정리" 입력 위젯(예전 이름: 부별 소속 재정의). 행마다 [부 이름(자유 입력)] + [그 부에서의
   // 소속(태그, 여러 개 가능)]을 쓸 수 있고, 비워둔 부는 그냥 기본 소속을 그대로 쓴다.
   // initialOverrides는 { "3부": ["오토리 일행"], ... } 형태의 객체.
   function mountPartOverrideInput(container, initialOverrides) {
@@ -1284,7 +1291,7 @@
         const partInput = document.createElement('input');
         partInput.type = 'text';
         partInput.className = 'form-input part-override-part';
-        partInput.placeholder = '부 (예: 3부)';
+        partInput.placeholder = '시리즈 (예: 3부)';
         partInput.value = row.part;
         partInput.addEventListener('change', () => {
           row.part = partInput.value.trim();
@@ -1312,7 +1319,7 @@
       const addBtn = document.createElement('button');
       addBtn.type = 'button';
       addBtn.className = 'field-manager-add-btn';
-      addBtn.textContent = '+ 재정의 추가';
+      addBtn.textContent = '+ 시리즈 추가';
       addBtn.addEventListener('click', () => {
         rows.push({ part: '', tags: [], tagWidget: null });
         redraw();
@@ -1504,9 +1511,9 @@
       .trim();
   }
 
-  function mountRichText(container, key, initialHtml) {
+  function mountRichText(container, key, initialHtml, compact) {
     const wrap = document.createElement('div');
-    wrap.className = 'richtext-wrap';
+    wrap.className = 'richtext-wrap' + (compact ? ' is-compact' : '');
 
     const toolbar = document.createElement('div');
     toolbar.className = 'richtext-toolbar';
@@ -1638,16 +1645,28 @@
   // 잘라낸 결과가 pendingCroppedFiles[slotKey]에 저장되고, 저장 시 원본 파일 대신 이걸 쓴다.
   // "자르지 않고 원본 그대로"를 누르면 아무 것도 저장하지 않고, 원본 파일 입력값이 그대로 쓰인다.
   function wireImageCropInput(inputEl, slotKey) {
+    // 고른(또는 기존) 이미지를 입력칸 바로 아래 미리보기로 보여준다.
+    function showPreview(fileOrBlob) {
+      let img = inputEl.parentNode.querySelector('.image-slot-preview');
+      if (!img) {
+        img = document.createElement('img');
+        img.className = 'image-slot-preview';
+        img.alt = '';
+        inputEl.insertAdjacentElement('afterend', img);
+      }
+      img.src = URL.createObjectURL(fileOrBlob);
+    }
     inputEl.addEventListener('change', () => {
       const file = inputEl.files[0];
       delete pendingCroppedFiles[slotKey];
       if (!file) return;
       // 자르기 도구(cdnjs)를 못 불러온 상태라면(네트워크 문제 등) 자르기 단계 없이
       // 원본 파일을 그대로 쓴다 — 저장 자체가 막히면 안 되니까.
-      if (typeof Cropper === 'undefined') return;
+      if (typeof Cropper === 'undefined') { showPreview(file); return; }
       openCropModal(file, (blob) => {
         pendingCroppedFiles[slotKey] = { blob, ext: 'jpg' };
-      });
+        showPreview(blob);
+      }, { onSkip: () => showPreview(file) });
     });
   }
 
@@ -1676,12 +1695,17 @@
   // 神世界 캐릭터의 "부별 소속 재정의" 위젯(있을 때만). snapshotFormValues/submitForm에서
   // 함께 읽어서 저장한다.
   let partOverrideWidget = null;
+  // 지금 열려 있는 캐릭터가 "시리즈물 캐릭터"로 켜져 있는지
+  let currentSeriesOn = false;
 
   function renderDynamicSection(w, existing, presetSubcategory) {
     const container = document.getElementById('dynamicFieldsContainer');
     container.innerHTML = '';
     currentFieldWidgets = {};
     partOverrideWidget = null;
+    const firstTagField = (w.fields || []).find((ff) => ff.type === 'tags') || null;
+    currentSeriesOn = seriesCharacterOn(existing, w);
+    let seriesSectionEl = null;
 
     if (w.useGradeClass) {
       const gradeLabel = document.createElement('label');
@@ -1800,15 +1824,30 @@
         roleRow.className = 'field-category-roles';
         const sideChk = document.createElement('label');
         sideChk.className = 'field-category-role-chk';
-        sideChk.innerHTML = `<input type="checkbox" ${f.sidebarFilter ? 'checked' : ''}> 사이드바 필터로 쓰기`;
+        sideChk.innerHTML = `<input type="checkbox" ${f.sidebarFilter ? 'checked' : ''}> 사이드바 세부 카테고리로 사용`;
         sideChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'sidebarFilter', e.target.checked));
         const galChk = document.createElement('label');
         galChk.className = 'field-category-role-chk';
-        galChk.innerHTML = `<input type="checkbox" ${f.galleryGroup ? 'checked' : ''}> 갤러리 구역으로 묶기`;
+        galChk.innerHTML = `<input type="checkbox" ${f.galleryGroup ? 'checked' : ''}> 갤러리 세부 구분으로 사용`;
         galChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'galleryGroup', e.target.checked));
         roleRow.appendChild(sideChk);
         roleRow.appendChild(galChk);
         label.appendChild(roleRow);
+
+        if (firstTagField && f.key === firstTagField.key) {
+          const seriesRow = document.createElement('div');
+          seriesRow.className = 'series-toggle-row';
+          seriesRow.innerHTML = `<span class="series-toggle-label">시리즈물 캐릭터</span>${toggleSwitchHtml('', currentSeriesOn)}`;
+          const sw = seriesRow.querySelector('.toggle-switch');
+          sw.removeAttribute('id');
+          sw.addEventListener('click', () => {
+            currentSeriesOn = !currentSeriesOn;
+            sw.classList.toggle('is-on', currentSeriesOn);
+            sw.setAttribute('aria-checked', String(currentSeriesOn));
+            if (seriesSectionEl) seriesSectionEl.hidden = !currentSeriesOn;
+          });
+          label.appendChild(seriesRow);
+        }
       } else if (f.type === 'textarea' || f.type === 'collapse') {
         mountRichText(label, f.key, rawVal);
       } else if (f.type === 'rating') {
@@ -1829,19 +1868,14 @@
         roleRow.className = 'field-category-roles';
         const sideChk = document.createElement('label');
         sideChk.className = 'field-category-role-chk';
-        sideChk.innerHTML = `<input type="checkbox" ${f.sidebarFilter ? 'checked' : ''}> 사이드바 필터로 쓰기`;
+        sideChk.innerHTML = `<input type="checkbox" ${f.sidebarFilter ? 'checked' : ''}> 사이드바 세부 카테고리로 사용`;
         sideChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'sidebarFilter', e.target.checked));
         const galChk = document.createElement('label');
         galChk.className = 'field-category-role-chk';
-        galChk.innerHTML = `<input type="checkbox" ${f.galleryGroup ? 'checked' : ''}> 갤러리 구역으로 묶기`;
+        galChk.innerHTML = `<input type="checkbox" ${f.galleryGroup ? 'checked' : ''}> 갤러리 세부 구분으로 사용`;
         galChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'galleryGroup', e.target.checked));
-        const multiChk = document.createElement('label');
-        multiChk.className = 'field-category-role-chk';
-        multiChk.innerHTML = `<input type="checkbox" checked> 여러 개 선택 가능 (예: 1부~5부에 걸쳐 등장)`;
-        multiChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'multi', e.target.checked));
         roleRow.appendChild(sideChk);
         roleRow.appendChild(galChk);
-        roleRow.appendChild(multiChk);
         label.appendChild(roleRow);
       } else if (f.type === 'category') {
         const datalistId = 'dl_' + f.key;
@@ -1863,19 +1897,14 @@
         roleRow.className = 'field-category-roles';
         const sideChk = document.createElement('label');
         sideChk.className = 'field-category-role-chk';
-        sideChk.innerHTML = `<input type="checkbox" ${f.sidebarFilter ? 'checked' : ''}> 사이드바 필터로 쓰기`;
+        sideChk.innerHTML = `<input type="checkbox" ${f.sidebarFilter ? 'checked' : ''}> 사이드바 세부 카테고리로 사용`;
         sideChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'sidebarFilter', e.target.checked));
         const galChk = document.createElement('label');
         galChk.className = 'field-category-role-chk';
-        galChk.innerHTML = `<input type="checkbox" ${f.galleryGroup ? 'checked' : ''}> 갤러리 구역으로 묶기`;
+        galChk.innerHTML = `<input type="checkbox" ${f.galleryGroup ? 'checked' : ''}> 갤러리 세부 구분으로 사용`;
         galChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'galleryGroup', e.target.checked));
-        const multiChk = document.createElement('label');
-        multiChk.className = 'field-category-role-chk';
-        multiChk.innerHTML = `<input type="checkbox"> 여러 개 선택 가능 (예: 1부~5부에 걸쳐 등장)`;
-        multiChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'multi', e.target.checked));
         roleRow.appendChild(sideChk);
         roleRow.appendChild(galChk);
-        roleRow.appendChild(multiChk);
         label.appendChild(roleRow);
       } else if (f.core) {
         const valInput = document.createElement('input');
@@ -1899,7 +1928,7 @@
         // 추가할 수 있는 칸이 생성/수정 창 아래쪽에 따로 생긴다.
         const perCharChk = document.createElement('label');
         perCharChk.className = 'field-category-role-chk';
-        perCharChk.innerHTML = `<input type="checkbox" ${w.perCharacterFields ? 'checked' : ''}> 캐릭터마다 다른 항목 추가 허용`;
+        perCharChk.innerHTML = `<input type="checkbox" ${w.perCharacterFields ? 'checked' : ''}> 템플릿 외 항목 추가`;
         perCharChk.querySelector('input').addEventListener('change', async (e) => {
           const checked = e.target.checked;
           const updated = await toggleWorldFlag(w, 'perCharacterFields', checked);
@@ -1913,7 +1942,8 @@
         label.appendChild(roleRow);
       } else {
         // 일반 텍스트 입력도 굵게/기울임/밑줄/글자 크기 서식과 줄바꿈을 쓸 수 있게 서식 있는 입력창으로.
-        mountRichText(label, f.key, rawVal);
+        // (한 줄짜리 항목이 많아서 긴 글 칸보다 높이를 2/3로 낮춘다)
+        mountRichText(label, f.key, rawVal, true);
       }
       row.appendChild(label);
 
@@ -1947,7 +1977,7 @@
         <option value="collapse">접은 글(눌러야 펼쳐짐)</option>
         <option value="rating">레이팅(별점)</option>
         <option value="entries">엔트리 목록(이미지+이름+설명)</option>
-        <option value="category">분류(사이드바·갤러리 구역)</option>
+        <option value="category">분류(사이드바·갤러리 세부 구분)</option>
       </select>
       <button type="button" class="field-manager-add-btn" id="newFieldBtn">+ 항목 추가</button>
     `;
@@ -1956,16 +1986,18 @@
     container.appendChild(fieldMgr);
     wireFieldManagerDrag(rowsWrap, w);
 
-    // 神世界 한정: 부마다 소속이 바뀌는 캐릭터를 위한 "부별 소속 재정의" 입력칸.
-    // (작품 부에 따라 소속/진영이 바뀌는 캐릭터가 있어서, 기본 소속 하나로는 표현이 안 됨)
-    if (isSinsekaiWorld(w)) {
+    // 시리즈물 캐릭터: 시리즈(사이드바 세부 카테고리)에 따라 소속(태그)이 바뀌는 캐릭터를 위한
+    // "시리즈 소속 정리" 입력칸. 위의 "시리즈물 캐릭터" 스위치를 켰을 때만 보인다.
+    if (firstTagField) {
       const partOverrideSection = document.createElement('div');
       partOverrideSection.className = 'part-override-section';
+      partOverrideSection.hidden = !currentSeriesOn;
       partOverrideSection.innerHTML = `
-        <p class="form-section-title">부별 소속 재정의</p>
-        <p class="form-hint">비워두면 그 부에서도 기본 소속 그대로 떠요. 예: 백백도는 평소엔 "이원향"이지만 3부에서만 "오토리 일행"으로 적어두면, 3부 화면에서만 오토리 일행 쪽에 떠요.</p>
+        <p class="form-section-title">시리즈 소속 정리</p>
+        <p class="form-hint">시리즈 → 사이드바 세부 카테고리를 입력하면 됩니다<br>미기입 시, 기본 태그 반영. 기입 시, 해당 세부 카테고리에서는 이 캐릭터의 태그(소속 등)가 기입한 대로 변경돼요</p>
       `;
       container.appendChild(partOverrideSection);
+      seriesSectionEl = partOverrideSection;
       const initialOverrides = existing && existing.fields ? existing.fields.partOverrides : null;
       partOverrideWidget = mountPartOverrideInput(partOverrideSection, initialOverrides);
     }
@@ -2044,7 +2076,7 @@
         label.appendChild(c);
         currentFieldWidgets[f.key] = mountEntryListInput(c, Array.isArray(rawVal) ? rawVal : []);
       } else {
-        mountRichText(label, f.key, rawVal);
+        mountRichText(label, f.key, rawVal, true);
       }
       row.appendChild(label);
 
@@ -2193,8 +2225,9 @@
     }
     Object.assign(snap.fields, snapshotFieldValues(world.fields || []));
     Object.assign(snap.fields, snapshotFieldValues(currentCustomFields));
-    if (isSinsekaiWorld(world) && partOverrideWidget) {
+    if (partOverrideWidget) {
       snap.fields.partOverrides = partOverrideWidget.getValue();
+      snap.fields.seriesCharacter = currentSeriesOn;
     }
     return snap;
   }
@@ -2437,22 +2470,17 @@
           <select class="template-select" id="fWorld">
             ${worlds.map((wo) => `<option value="${wo.id}" ${wo.id === w.id ? 'selected' : ''}>${wo.name}</option>`).join('')}
           </select>
-          <button type="button" class="template-mini-btn" id="templateAddBtn">+ 새 템플릿</button>
-          <button type="button" class="template-mini-btn" id="templateRenameBtn">이름 변경</button>
-          <button type="button" class="template-mini-btn danger" id="templateDelBtn">템플릿 삭제</button>
-          <button type="button" class="template-mini-btn" id="templateMoveUpBtn" title="탭 순서를 앞으로">▲ 순서</button>
-          <button type="button" class="template-mini-btn" id="templateMoveDownBtn" title="탭 순서를 뒤로">▼ 순서</button>
         </div>
         <div class="image-slot-row">
-          <label class="form-label">이미지 삽입(1) — 갤러리 카드용
+          <label class="form-label">이미지 1 — 썸네일
             <input type="file" accept="image/*" class="form-input" id="fImage">
+            ${isEdit && existing.image ? `<img class="image-slot-preview" src="${escapeAttr(assetUrl(existing.image))}" alt="">` : ''}
           </label>
-          <label class="form-label">이미지 삽입(2) — 상세 프로필용
+          <label class="form-label">이미지 2 — 전신
             <input type="file" accept="image/*" class="form-input" id="fProfileImage">
+            ${isEdit && existing.profileImage ? `<img class="image-slot-preview" src="${escapeAttr(assetUrl(existing.profileImage))}" alt="">` : ''}
           </label>
         </div>
-        ${isEdit && existing.image ? `<p class="form-hint">현재 이미지(1): ${existing.image}</p>` : ''}
-        ${isEdit && existing.profileImage ? `<p class="form-hint">현재 이미지(2): ${existing.profileImage}</p>` : ''}
       </div>
 
       <div id="dynamicFieldsContainer"></div>
@@ -2518,35 +2546,6 @@
     document.getElementById('fWorld').addEventListener('change', (e) => {
       selectedWorldId = e.target.value;
       switchToWorld(worldById(selectedWorldId));
-    });
-
-    document.getElementById('templateAddBtn').addEventListener('click', async () => {
-      const newWorld = await addTemplate();
-      if (newWorld) switchToWorld(newWorld);
-    });
-
-    document.getElementById('templateDelBtn').addEventListener('click', async () => {
-      const current = worldById(selectedWorldId);
-      const fallback = await removeTemplate(current);
-      if (fallback) switchToWorld(fallback);
-    });
-
-    document.getElementById('templateRenameBtn').addEventListener('click', async () => {
-      const current = worldById(selectedWorldId);
-      const renamed = await renameTemplate(current);
-      if (renamed) switchToWorld(renamed);
-    });
-
-    document.getElementById('templateMoveUpBtn').addEventListener('click', async () => {
-      const current = worldById(selectedWorldId);
-      const moved = await moveTemplate(current, -1);
-      if (moved) switchToWorld(moved);
-    });
-
-    document.getElementById('templateMoveDownBtn').addEventListener('click', async () => {
-      const current = worldById(selectedWorldId);
-      const moved = await moveTemplate(current, 1);
-      if (moved) switchToWorld(moved);
     });
 
     document.getElementById('formFallbackLink').addEventListener('click', (e) => {
@@ -2769,8 +2768,9 @@
         obj.customFields = currentCustomFields.map((f) => ({ key: f.key, label: f.label, type: f.type }));
       }
 
-      if (isSinsekaiWorld(world) && partOverrideWidget) {
+      if (partOverrideWidget) {
         obj.fields.partOverrides = partOverrideWidget.getValue();
+        obj.fields.seriesCharacter = currentSeriesOn;
       }
 
       const imageFile = document.getElementById('fImage').files[0];
@@ -3152,18 +3152,36 @@
   noticeEditorEl.addEventListener('input', ensureNoticeBlocks);
   noticeEditorEl.addEventListener('focus', ensureNoticeBlocks);
 
+  // 선택 영역(드래그한 글자 또는 커서 하나)이 걸쳐 있는 "줄"들을 돌려준다.
+  // 글자를 선택하지 않고 커서만 있어도, 빈 칸이어도 커서가 있는 줄 하나를 돌려준다.
   function topBlocksOfRange(r) {
-    const out = [];
-    Array.from(noticeEditorEl.children).forEach((b) => {
-      if (r.intersectsNode(b)) out.push(b);
-    });
-    return out;
+    const kids = Array.from(noticeEditorEl.children);
+    if (!kids.length) return [];
+    function indexOf(container, offset) {
+      if (container === noticeEditorEl) {
+        return Math.max(0, Math.min(offset, kids.length - 1));
+      }
+      let n = container;
+      while (n && n.parentNode !== noticeEditorEl) n = n.parentNode;
+      const i = n ? kids.indexOf(n) : -1;
+      return i === -1 ? kids.length - 1 : i;
+    }
+    let i1 = indexOf(r.startContainer, r.startOffset);
+    let i2 = indexOf(r.endContainer, r.endOffset);
+    if (i1 > i2) [i1, i2] = [i2, i1];
+    // 선택이 다음 줄의 맨 앞에서 끝났다면(줄 전체 선택 등) 그 다음 줄은 제외한다.
+    if (i2 > i1 && r.endOffset === 0 && r.endContainer !== noticeEditorEl) {
+      const endBlock = kids[i2];
+      if (r.endContainer === endBlock || (endBlock.firstChild === r.endContainer)) i2 -= 1;
+    }
+    return kids.slice(i1, i2 + 1);
   }
 
   function applyNoticeAlign(align) {
     const r = restoreNoticeSelection();
     ensureNoticeBlocks();
-    const blocks = topBlocksOfRange(window.getSelection().getRangeAt(0) || r);
+    const sel0 = window.getSelection();
+    const blocks = topBlocksOfRange(sel0.rangeCount ? sel0.getRangeAt(0) : r);
     const allSame = blocks.length > 0 && blocks.every((b) => b.style.textAlign === align);
     blocks.forEach((b) => { b.style.textAlign = allSame && align !== 'left' ? '' : align; });
   }
@@ -3365,9 +3383,14 @@
     const r = await saveSiteWithMutation((d) => {
       d.notice = Object.assign({}, d.notice, { html });
     });
-    noticeStatusEl.textContent = r.ok ? '저장됐어요.' : '저장에 실패했어요: ' + r.message;
-    noticeStatusEl.classList.toggle('is-error', !r.ok);
-    if (r.ok && showNotice) renderGallery();
+    if (r.ok) {
+      // 저장되면 박스를 바로 닫는다.
+      closeNoticeBox();
+      if (showNotice) renderGallery();
+      return;
+    }
+    noticeStatusEl.textContent = '저장에 실패했어요: ' + r.message;
+    noticeStatusEl.classList.add('is-error');
   });
 
   // 토큰 설정은 따로 뜨는 박스 안에서 보여준다.
@@ -3921,16 +3944,13 @@
       row.appendChild(top);
 
       const roles = [];
-      if (f.core) roles.push({ label: '캐릭터마다 다른 항목 추가 허용', checked: !!w.perCharacterFields, apply: (checked) => catMutate((fw) => {
+      if (f.core) roles.push({ label: '템플릿 외 항목 추가', checked: !!w.perCharacterFields, apply: (checked) => catMutate((fw) => {
         const t = fw.find((x) => x.id === w.id);
         if (t) t.perCharacterFields = checked;
       }) });
       if (f.type === 'tags' || f.type === 'category') {
-        roles.push({ label: '사이드바 필터로 쓰기', checked: !!f.sidebarFilter, apply: (c) => mutateField(f.key, (ff) => { ff.sidebarFilter = c; }) });
-        roles.push({ label: '갤러리 구역으로 묶기', checked: !!f.galleryGroup, apply: (c) => mutateField(f.key, (ff) => { ff.galleryGroup = c; }) });
-      }
-      if (f.type === 'category') {
-        roles.push({ label: '여러 개 선택 가능 (예: 1부~5부에 걸쳐 등장)', checked: !!f.multi, apply: (c) => mutateField(f.key, (ff) => { ff.multi = c; }) });
+        roles.push({ label: '사이드바 세부 카테고리로 사용', checked: !!f.sidebarFilter, apply: (c) => mutateField(f.key, (ff) => { ff.sidebarFilter = c; }) });
+        roles.push({ label: '갤러리 세부 구분으로 사용', checked: !!f.galleryGroup, apply: (c) => mutateField(f.key, (ff) => { ff.galleryGroup = c; }) });
       }
       if (roles.length) {
         const roleRow = makeEl('div', 'field-category-roles');
@@ -3957,7 +3977,7 @@
     [
       ['text', '텍스트 입력'], ['tags', '태그 입력'], ['textarea', '긴 글(소개·성격 등)'],
       ['collapse', '접은 글(눌러야 펼쳐짐)'], ['rating', '레이팅(별점)'],
-      ['entries', '엔트리 목록(이미지+이름+설명)'], ['category', '분류(사이드바·갤러리 구역)'],
+      ['entries', '엔트리 목록(이미지+이름+설명)'], ['category', '분류(사이드바·갤러리 세부 구분)'],
     ].forEach(([v, l]) => {
       const o = document.createElement('option');
       o.value = v;
