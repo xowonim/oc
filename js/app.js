@@ -471,7 +471,7 @@
 
   function galleryAuxField(world) {
     if (!world) return null;
-    return isSinsekaiWorld(world) ? findFieldByLabel(world, '주 오행') : findFieldByLabel(world, '소속');
+    return (world.fields || []).find((f) => f.type === 'tags' && f.galleryAux) || null;
   }
 
   // 카드 오른쪽에 보여줄 내용의 HTML을 만든다.
@@ -1838,8 +1838,13 @@
         galChk.className = 'field-category-role-chk';
         galChk.innerHTML = `<input type="checkbox" ${f.galleryGroup ? 'checked' : ''}> 갤러리 세부 구분으로 사용`;
         galChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'galleryGroup', e.target.checked));
+        const auxChk = document.createElement('label');
+        auxChk.className = 'field-category-role-chk';
+        auxChk.innerHTML = `<input type="checkbox" ${f.galleryAux ? 'checked' : ''}> 부가 설명 사용`;
+        auxChk.querySelector('input').addEventListener('change', (e) => toggleFieldRole(w, f.key, 'galleryAux', e.target.checked));
         roleRow.appendChild(sideChk);
         roleRow.appendChild(galChk);
+        roleRow.appendChild(auxChk);
         label.appendChild(roleRow);
 
         if (firstTagField && f.key === firstTagField.key) {
@@ -3960,6 +3965,9 @@
       if (f.type === 'tags' || f.type === 'category') {
         roles.push({ label: '사이드바 세부 카테고리로 사용', checked: !!f.sidebarFilter, apply: (c) => mutateField(f.key, (ff) => { ff.sidebarFilter = c; }) });
         roles.push({ label: '갤러리 세부 구분으로 사용', checked: !!f.galleryGroup, apply: (c) => mutateField(f.key, (ff) => { ff.galleryGroup = c; }) });
+      }
+      if (f.type === 'tags') {
+        roles.push({ label: '부가 설명 사용', checked: !!f.galleryAux, apply: (c) => mutateField(f.key, (ff) => { ff.galleryAux = c; }) });
       }
       if (roles.length) {
         const roleRow = makeEl('div', 'field-category-roles');
